@@ -12,7 +12,7 @@ import crypto from "crypto";
 // AUTH & CLEARANCE CHECK UTILITY
 // ─────────────────────────────────────────────
 async function checkAdminClearance() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const { data: session } = await auth.getSession({ fetchOptions: { headers: await headers() } });
   if (!session) throw new Error("Unauthenticated. Access denied.");
   
   const isUserAdmin = await isAdmin(session.user.id);

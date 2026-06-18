@@ -202,9 +202,22 @@ async function main() {
   console.log("Seeding default administrator user...");
   const adminEmail = "admin@sedsjpura.org.lk";
   const adminPassword = "seds-jpura-admin-pass";
-  const { auth } = await import("../lib/auth");
-  const authCtx = await auth.$context;
+  
+  // Use better-auth directly to generate the scrypt hash
+  const { betterAuth } = await import("better-auth");
+  const tempAuth = betterAuth({
+    database: {
+      provider: "sqlite",
+      db: {} as any
+    },
+    emailAndPassword: {
+      enabled: true
+    }
+  });
+  const authCtx = await tempAuth.$context;
   const hashedPassword = await authCtx.password.hash(adminPassword);
+  
+  const crypto = await import("crypto");
 
   // Check if admin user already exists
   let adminUser = await prisma.user.findUnique({
@@ -212,8 +225,10 @@ async function main() {
   });
 
   if (!adminUser) {
+    const adminId = crypto.randomUUID();
     adminUser = await prisma.user.create({
       data: {
+        id: adminId,
         name: "SEDS Admin",
         email: adminEmail,
         emailVerified: true,
@@ -224,6 +239,7 @@ async function main() {
     // Create credential account for Better Auth
     await prisma.account.create({
       data: {
+        id: crypto.randomUUID(),
         userId: adminUser.id,
         accountId: adminUser.id,
         providerId: "credential",

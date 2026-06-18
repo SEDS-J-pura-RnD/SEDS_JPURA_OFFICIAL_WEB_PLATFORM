@@ -9,9 +9,9 @@ const AUTH_ROUTES = ["/auth/login", "/auth/register"];
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Get session from Better Auth
-  const session = await auth.api.getSession({
-    headers: request.headers,
+  // Get session from Neon Auth
+  const { data: session } = await auth.getSession({
+    fetchOptions: { headers: request.headers },
   });
 
   const isAuthenticated = !!session;

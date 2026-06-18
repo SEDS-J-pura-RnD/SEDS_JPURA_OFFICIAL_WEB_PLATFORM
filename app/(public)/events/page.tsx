@@ -36,7 +36,7 @@ export default async function EventsPage() {
         <div className="container">
           <div className="section-tag">📅 EVENTS</div>
           <h1 className="section-title" style={{ textAlign: "center" }}>
-            Events & <span className="text-gradient">Programs</span>
+            Events &amp; <span className="text-gradient">Programs</span>
           </h1>
           <p className="section-desc">
             Workshops, seminars, competitions, and stargazing sessions — join us for our upcoming events.
@@ -58,16 +58,65 @@ export default async function EventsPage() {
           ) : (
             <div className="grid-2">
               {upcoming.map((event) => (
-                <Link key={event.id} href={`/events/${event.id}`} className="event-card card">
-                  <div className="event-date">
-                    <span className="event-day">{new Date(event.startDate).getDate()}</span>
-                    <span className="event-month">{new Date(event.startDate).toLocaleDateString("en", { month: "short" }).toUpperCase()}</span>
+                <Link
+                  key={event.id}
+                  href={`/events/${event.id}`}
+                  className="event-card card"
+                  style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}
+                >
+                  {/* Banner Image */}
+                  <div style={{
+                    width: "100%",
+                    height: "200px",
+                    position: "relative",
+                    overflow: "hidden",
+                    background: "linear-gradient(135deg, rgba(99,102,241,0.2), rgba(16,185,129,0.1))",
+                    flexShrink: 0,
+                  }}>
+                    {event.imageUrl ? (
+                      <img
+                        src={event.imageUrl}
+                        alt={event.title}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: "100%", height: "100%",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: "3rem", opacity: 0.2,
+                      }}>📅</div>
+                    )}
+                    <div style={{
+                      position: "absolute", inset: 0,
+                      background: "linear-gradient(to top, rgba(5,13,26,0.9) 0%, transparent 60%)",
+                    }} />
+                    {/* Date Chip */}
+                    <div style={{
+                      position: "absolute", top: "0.75rem", right: "0.75rem",
+                      background: "rgba(16,185,129,0.85)",
+                      backdropFilter: "blur(8px)",
+                      borderRadius: "var(--radius-md)",
+                      padding: "0.4rem 0.7rem",
+                      textAlign: "center",
+                      minWidth: "48px",
+                    }}>
+                      <div style={{ fontSize: "1.25rem", fontWeight: 800, fontFamily: "var(--font-display)", lineHeight: 1 }}>
+                        {new Date(event.startDate).getDate()}
+                      </div>
+                      <div style={{ fontSize: "0.6rem", fontWeight: 600, letterSpacing: "0.05em" }}>
+                        {new Date(event.startDate).toLocaleDateString("en", { month: "short" }).toUpperCase()}
+                      </div>
+                    </div>
                   </div>
-                  <div className="event-info">
-                    <h3 className="event-title">{event.title}</h3>
-                    <p className="event-desc">{event.description.slice(0, 100)}...</p>
-                    {event.location && <div className="event-location">📍 {event.location}</div>}
-                    <div className="event-register btn btn-primary btn-sm" style={{ marginTop: "1rem", display: "inline-flex" }}>
+
+                  {/* Card Body */}
+                  <div style={{ padding: "1.25rem", flex: 1, display: "flex", flexDirection: "column" }}>
+                    <div className="event-info" style={{ flex: 1 }}>
+                      <h3 className="event-title">{event.title}</h3>
+                      <p className="event-desc">{event.description.slice(0, 100)}...</p>
+                      {event.location && <div className="event-location">📍 {event.location}</div>}
+                    </div>
+                    <div className="event-register btn btn-primary btn-sm" style={{ marginTop: "1rem", display: "inline-flex", alignSelf: "flex-start" }}>
                       Register Now →
                     </div>
                   </div>
@@ -83,11 +132,22 @@ export default async function EventsPage() {
               </h2>
               <div className="grid-3">
                 {past.map((event) => (
-                  <div key={event.id} className="card" style={{ opacity: 0.7 }}>
-                    <div className="badge badge-cosmic" style={{ marginBottom: "0.75rem", display: "inline-flex" }}>Completed</div>
-                    <h3 style={{ fontFamily: "var(--font-display)", fontSize: "0.9375rem", fontWeight: 700, marginBottom: "0.5rem" }}>{event.title}</h3>
-                    <div style={{ fontSize: "0.8125rem", color: "var(--color-text-dim)" }}>
-                      {new Date(event.startDate).toLocaleDateString("en-LK", { day: "numeric", month: "long", year: "numeric" })}
+                  <div key={event.id} className="card" style={{ padding: 0, overflow: "hidden", opacity: 0.75 }}>
+                    {event.imageUrl && (
+                      <div style={{ width: "100%", height: "120px", overflow: "hidden" }}>
+                        <img
+                          src={event.imageUrl}
+                          alt={event.title}
+                          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", filter: "grayscale(40%)" }}
+                        />
+                      </div>
+                    )}
+                    <div style={{ padding: "1rem" }}>
+                      <div className="badge badge-cosmic" style={{ marginBottom: "0.75rem", display: "inline-flex" }}>Completed</div>
+                      <h3 style={{ fontFamily: "var(--font-display)", fontSize: "0.9375rem", fontWeight: 700, marginBottom: "0.5rem" }}>{event.title}</h3>
+                      <div style={{ fontSize: "0.8125rem", color: "var(--color-text-dim)" }}>
+                        {new Date(event.startDate).toLocaleDateString("en-LK", { day: "numeric", month: "long", year: "numeric" })}
+                      </div>
                     </div>
                   </div>
                 ))}

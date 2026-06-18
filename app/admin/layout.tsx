@@ -9,7 +9,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const { data: session } = await auth.getSession({ fetchOptions: { headers: await headers() } });
   if (!session) redirect("/auth/login?callbackUrl=/admin");
 
   const hasAccess = await isAdmin(session.user.id);

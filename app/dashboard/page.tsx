@@ -7,7 +7,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 export default async function MemberDashboardPage() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const { data: session } = await auth.getSession({ fetchOptions: { headers: await headers() } });
   if (!session) {
     redirect("/auth/login?callbackUrl=/dashboard");
   }

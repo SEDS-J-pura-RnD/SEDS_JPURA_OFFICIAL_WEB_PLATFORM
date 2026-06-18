@@ -29,6 +29,28 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
 
   return (
     <div>
+      {/* Hero Cover Image */}
+      {article.imageUrl && (
+        <div style={{
+          width: "100%",
+          height: "380px",
+          position: "relative",
+          overflow: "hidden",
+          background: "var(--color-space)",
+        }}>
+          <img
+            src={article.imageUrl}
+            alt={article.title}
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: 0.7 }}
+          />
+          <div style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(to top, var(--color-void) 0%, rgba(3,7,18,0.3) 60%, transparent 100%)",
+          }} />
+        </div>
+      )}
+
       <article style={{ padding: "4rem 0" }}>
         <div className="container-sm">
           {/* Tags */}
@@ -39,12 +61,27 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
           </div>
 
           {/* Title */}
-          <h1 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.75rem, 4vw, 2.75rem)", fontWeight: 900, letterSpacing: "0.03em", lineHeight: 1.15, marginBottom: "1.25rem" }}>
+          <h1 style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "clamp(1.75rem, 4vw, 2.75rem)",
+            fontWeight: 900,
+            letterSpacing: "0.03em",
+            lineHeight: 1.15,
+            marginBottom: "1.25rem",
+          }}>
             {article.title}
           </h1>
 
           {/* Meta */}
-          <div style={{ display: "flex", gap: "1.5rem", color: "var(--color-text-muted)", fontSize: "0.875rem", marginBottom: "3rem", borderBottom: "1px solid var(--color-border)", paddingBottom: "1.5rem" }}>
+          <div style={{
+            display: "flex",
+            gap: "1.5rem",
+            color: "var(--color-text-muted)",
+            fontSize: "0.875rem",
+            marginBottom: "3rem",
+            borderBottom: "1px solid var(--color-border)",
+            paddingBottom: "1.5rem",
+          }}>
             <span>✍️ {article.author.name}</span>
             {article.publishedAt && (
               <span>📅 {new Date(article.publishedAt).toLocaleDateString("en-LK", { day: "numeric", month: "long", year: "numeric" })}</span>

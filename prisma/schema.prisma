@@ -1,295 +1,257 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
   provider = "postgresql"
+  schemas  = ["neon_auth", "public"]
 }
 
-// ─────────────────────────────────────────────
-// BETTER AUTH REQUIRED MODELS
-// ─────────────────────────────────────────────
-
 model User {
-  id            String    @id @default(cuid())
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
+  email         String       @unique
+  emailVerified Boolean
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  // Relations
-  sessions      Session[]
+  createdAt     DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+  role          String?
+  banned        Boolean?
+  banReason     String?
+  banExpires    DateTime?    @db.Timestamptz(6)
   accounts      Account[]
-  userRoles     UserRole[]
-  projectMembers ProjectMember[]
-  newsArticles  News[]
-  auditLogs     AuditLog[]
+  invitation    invitation[]
+  member        member[]
+  sessions      Session[]
 
-  @@map("users")
+  // Public Schema Relations
+  userRoles      UserRole[]
+  projectMembers ProjectMember[]
+  newsArticles   News[]
+  auditLogs      AuditLog[]
+
+  @@map("user")
+  @@schema("neon_auth")
 }
 
 model Session {
-  id        String   @id @default(cuid())
-  expiresAt DateTime
-  token     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  expiresAt            DateTime @db.Timestamptz(6)
+  token                String   @unique
+  createdAt            DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @db.Timestamptz(6)
+  ipAddress            String?
+  userAgent            String?
+  userId               String   @db.Uuid
+  impersonatedBy       String?
+  activeOrganizationId String?
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@map("sessions")
+  @@index([userId])
+  @@map("session")
+  @@schema("neon_auth")
 }
 
 model Account {
-  id                    String    @id @default(cuid())
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   accountId             String
   providerId            String
-  userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String    @db.Uuid
   accessToken           String?
   refreshToken          String?
   idToken               String?
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
+  accessTokenExpiresAt  DateTime? @db.Timestamptz(6)
+  refreshTokenExpiresAt DateTime? @db.Timestamptz(6)
   scope                 String?
   password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt             DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(6)
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@map("accounts")
+  @@index([userId])
+  @@map("account")
+  @@schema("neon_auth")
 }
 
 model Verification {
-  id         String    @id @default(cuid())
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   identifier String
   value      String
-  expiresAt  DateTime
-  createdAt  DateTime? @default(now())
-  updatedAt  DateTime? @updatedAt
+  expiresAt  DateTime @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
-  @@map("verifications")
+  @@index([identifier])
+  @@map("verification")
+  @@schema("neon_auth")
 }
 
-// ─────────────────────────────────────────────
-// RBAC: ROLES & PERMISSIONS
-// ─────────────────────────────────────────────
-
 model Role {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  userRoles       UserRole[]
+  id              String           @id @default(cuid())
+  name            String           @unique
+  description     String?
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   rolePermissions RolePermission[]
+  userRoles       UserRole[]
 
   @@map("roles")
+  @@schema("public")
 }
 
 model Permission {
-  id          String   @id @default(cuid())
-  name        String   @unique // e.g. "CREATE_USER"
-  description String?
-  category    String   // e.g. "User Management", "Content"
-
+  id              String           @id @default(cuid())
+  name            String           @unique
+  description     String?
+  category        String
   rolePermissions RolePermission[]
 
   @@map("permissions")
+  @@schema("public")
 }
 
 model UserRole {
-  userId    String
-  roleId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  userId     String   @db.Uuid
+  roleId     String
   assignedAt DateTime @default(now())
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, roleId])
   @@map("user_roles")
+  @@schema("public")
 }
 
 model RolePermission {
   roleId       String
   permissionId String
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
   permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@id([roleId, permissionId])
   @@map("role_permissions")
+  @@schema("public")
 }
-
-// ─────────────────────────────────────────────
-// DIVISIONS
-// ─────────────────────────────────────────────
 
 model Division {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  slug        String   @unique
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
   description String
-  icon        String?  // emoji or icon name
-  color       String?  // accent color hex
-  createdAt   DateTime @default(now())
-
-  projects Project[]
+  icon        String?
+  color       String?
+  createdAt   DateTime  @default(now())
+  projects    Project[]
 
   @@map("divisions")
-}
-
-// ─────────────────────────────────────────────
-// PROJECTS
-// ─────────────────────────────────────────────
-
-enum ProjectStatus {
-  ACTIVE
-  COMPLETED
-  ON_HOLD
-  PLANNING
-}
-
-enum ProjectRole {
-  LEAD
-  MEMBER
+  @@schema("public")
 }
 
 model Project {
-  id           String        @id @default(cuid())
+  id           String          @id @default(cuid())
   title        String
   description  String
   divisionId   String
-  division     Division      @relation(fields: [divisionId], references: [id])
-  status       ProjectStatus @default(PLANNING)
+  status       ProjectStatus   @default(PLANNING)
   technologies String[]
   outcomes     String?
   imageUrl     String?
   startDate    DateTime?
   endDate      DateTime?
-  isPublic     Boolean       @default(true)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-
-  members ProjectMember[]
+  isPublic     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  members      ProjectMember[]
+  division     Division        @relation(fields: [divisionId], references: [id])
 
   @@map("projects")
+  @@schema("public")
 }
 
 model ProjectMember {
   projectId   String
-  userId      String
+  userId      String      @db.Uuid
   projectRole ProjectRole @default(MEMBER)
+  joinedAt    DateTime    @default(now())
   project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  joinedAt    DateTime    @default(now())
 
   @@id([projectId, userId])
   @@map("project_members")
+  @@schema("public")
 }
 
-// ─────────────────────────────────────────────
-// NEWS
-// ─────────────────────────────────────────────
-
 model News {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
-  slug        String   @unique
+  slug        String    @unique
   excerpt     String
   content     String
   imageUrl    String?
-  authorId    String
-  author      User     @relation(fields: [authorId], references: [id])
-  isPublished Boolean  @default(false)
+  authorId    String    @db.Uuid
+  isPublished Boolean   @default(false)
   publishedAt DateTime?
   tags        String[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  author      User      @relation(fields: [authorId], references: [id])
 
   @@map("news")
+  @@schema("public")
 }
 
-// ─────────────────────────────────────────────
-// EVENTS
-// ─────────────────────────────────────────────
-
 model Event {
-  id          String   @id @default(cuid())
-  title       String
-  description String
-  location    String?
-  imageUrl    String?
-  startDate   DateTime
-  endDate     DateTime?
-  isPublished Boolean  @default(false)
-  maxCapacity Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
+  id            String              @id @default(cuid())
+  title         String
+  description   String
+  location      String?
+  imageUrl      String?
+  startDate     DateTime
+  endDate       DateTime?
+  isPublished   Boolean             @default(false)
+  maxCapacity   Int?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
   registrations EventRegistration[]
 
   @@map("events")
+  @@schema("public")
 }
 
 model EventRegistration {
   id        String   @id @default(cuid())
   eventId   String
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   name      String
   email     String
   phone     String?
   createdAt DateTime @default(now())
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, email])
   @@map("event_registrations")
-}
-
-// ─────────────────────────────────────────────
-// CERTIFICATES
-// ─────────────────────────────────────────────
-
-enum CertificateStatus {
-  VALID
-  REVOKED
-  EXPIRED
+  @@schema("public")
 }
 
 model Certificate {
-  id            String            @id @default(cuid())
-  certId        String            @unique // human-readable unique ID e.g. SEDS-2025-001
-  recipientName String
+  id             String            @id @default(cuid())
+  certId         String            @unique
+  recipientName  String
   recipientEmail String?
-  type          String            // e.g. "Membership", "Event Participation", "Achievement"
-  description   String?
-  issueDate     DateTime          @default(now())
-  expiryDate    DateTime?
-  status        CertificateStatus @default(VALID)
-  hash          String            @unique // cryptographic hash for verification
-  issuedBy      String?           // name of issuer
-  metadata      Json?             // additional custom fields
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  type           String
+  description    String?
+  issueDate      DateTime          @default(now())
+  expiryDate     DateTime?
+  status         CertificateStatus @default(VALID)
+  hash           String            @unique
+  issuedBy       String?
+  metadata       Json?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
   @@map("certificates")
-}
-
-// ─────────────────────────────────────────────
-// SPONSORS
-// ─────────────────────────────────────────────
-
-enum SponsorTier {
-  PLATINUM
-  GOLD
-  SILVER
-  BRONZE
-  PARTNER
+  @@schema("public")
 }
 
 model Sponsor {
@@ -306,11 +268,8 @@ model Sponsor {
   updatedAt   DateTime    @updatedAt
 
   @@map("sponsors")
+  @@schema("public")
 }
-
-// ─────────────────────────────────────────────
-// CONTACT INQUIRIES
-// ─────────────────────────────────────────────
 
 model ContactInquiry {
   id        String   @id @default(cuid())
@@ -323,24 +282,127 @@ model ContactInquiry {
   createdAt DateTime @default(now())
 
   @@map("contact_inquiries")
+  @@schema("public")
 }
 
-// ─────────────────────────────────────────────
-// AUDIT LOGS
-// ─────────────────────────────────────────────
-
 model AuditLog {
-  id         String   @id @default(cuid())
-  userId     String?
-  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  action     String   // e.g. "ROLE_ASSIGNED", "PROJECT_CREATED"
-  entity     String   // e.g. "User", "Project"
-  entityId   String?
-  prevState  Json?
-  newState   Json?
-  ipAddress  String?
-  userAgent  String?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String?  @db.Uuid
+  action    String
+  entity    String
+  entityId  String?
+  prevState Json?
+  newState  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("audit_logs")
+  @@schema("public")
+}
+
+model invitation {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String       @db.Uuid
+  email          String
+  role           String?
+  status         String
+  expiresAt      DateTime     @db.Timestamptz(6)
+  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
+  inviterId      String       @db.Uuid
+  user           User         @relation(fields: [inviterId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organization   organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([email])
+  @@index([organizationId])
+  @@schema("neon_auth")
+}
+
+model jwks {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  publicKey  String
+  privateKey String
+  createdAt  DateTime  @db.Timestamptz(6)
+  expiresAt  DateTime? @db.Timestamptz(6)
+
+  @@schema("neon_auth")
+}
+
+model member {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String       @db.Uuid
+  userId         String       @db.Uuid
+  role           String
+  createdAt      DateTime     @db.Timestamptz(6)
+  organization   organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId])
+  @@index([userId])
+  @@schema("neon_auth")
+}
+
+model organization {
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String
+  slug       String       @unique
+  logo       String?
+  createdAt  DateTime     @db.Timestamptz(6)
+  metadata   String?
+  invitation invitation[]
+  member     member[]
+
+  @@schema("neon_auth")
+}
+
+model project_config {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name               String
+  endpoint_id        String   @unique
+  created_at         DateTime @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime @default(now()) @db.Timestamptz(6)
+  trusted_origins    Json
+  social_providers   Json
+  email_provider     Json?
+  email_and_password Json?
+  allow_localhost    Boolean
+  plugin_configs     Json?
+  webhook_config     Json?
+
+  @@schema("neon_auth")
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  ON_HOLD
+  PLANNING
+
+  @@schema("public")
+}
+
+enum ProjectRole {
+  LEAD
+  MEMBER
+
+  @@schema("public")
+}
+
+enum CertificateStatus {
+  VALID
+  REVOKED
+  EXPIRED
+
+  @@schema("public")
+}
+
+enum SponsorTier {
+  PLATINUM
+  GOLD
+  SILVER
+  BRONZE
+  PARTNER
+
+  @@schema("public")
 }

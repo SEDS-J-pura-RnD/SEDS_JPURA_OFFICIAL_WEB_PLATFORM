@@ -8,14 +8,18 @@ export const metadata: Metadata = {
     "The premier space research and technology student organization at the University of Sri Jayewardenepura, Sri Lanka.",
 };
 
+export const dynamic = "force-dynamic";
+
+
 async function getStats() {
   try {
-    const [projects, events, news] = await Promise.all([
+    const [projects, events, news, members] = await Promise.all([
       prisma.project.count(),
       prisma.event.count({ where: { isPublished: true } }),
       prisma.news.count({ where: { isPublished: true } }),
+      prisma.user.count(),
     ]);
-    return { projects, events, news, members: 150 }; // members from seed/manual count
+    return { projects, events, news, members };
   } catch {
     return { projects: 12, events: 45, news: 30, members: 150 };
   }
@@ -78,7 +82,7 @@ export default async function HomePage() {
           <div className="hero-content">
             <div className="hero-badge animate-fade-in">
               <span>🌌</span>
-              <span>University of Sri Jayewardenepura</span>
+              <span>SEDS J'pura</span>
             </div>
 
             <h1 className="hero-title animate-slide-up">
@@ -91,7 +95,7 @@ export default async function HomePage() {
             <p className="hero-desc animate-fade-in">
               Students for the Exploration and Development of Space — pioneering
               space research, rocketry, robotics, biomedical science, and
-              astronomy at USJP, Sri Lanka.
+              astronomy at University of Sri Jayewardenepura, Sri Lanka.
             </p>
 
             <div className="hero-actions animate-slide-up">
