@@ -44,6 +44,7 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
   // Form states
   const [formName, setFormName] = useState("");
   const [formEmail, setFormEmail] = useState("");
+  const [formPassword, setFormPassword] = useState("");
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
   
   const [error, setError] = useState("");
@@ -60,6 +61,7 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
     setEditingUser(null);
     setFormName("");
     setFormEmail("");
+    setFormPassword("");
     setSelectedRoleIds([]);
     setError("");
     setSuccess("");
@@ -70,6 +72,7 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
     setEditingUser(user);
     setFormName(user.name);
     setFormEmail(user.email);
+    setFormPassword("");
     setSelectedRoleIds(user.userRoles.map((ur) => ur.roleId));
     setError("");
     setSuccess("");
@@ -94,6 +97,17 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
       return;
     }
 
+    if (!editingUser) {
+      if (!formPassword) {
+        setError("Please enter a password for the new member account.");
+        return;
+      }
+      if (formPassword.length < 8) {
+        setError("Password must be at least 8 characters long.");
+        return;
+      }
+    }
+
     startTransition(async () => {
       try {
         if (editingUser) {
@@ -116,6 +130,7 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
             name: formName,
             email: formEmail,
             roleIds: selectedRoleIds,
+            password: formPassword,
           });
           if (res.success) {
             setSuccess("Member account established successfully.");
@@ -285,6 +300,22 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
                   required
                 />
               </div>
+
+              {!editingUser && (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="user-password">Initial Password</label>
+                  <input
+                    id="user-password"
+                    type="password"
+                    className="form-input"
+                    placeholder="At least 8 characters"
+                    value={formPassword}
+                    onChange={(e) => setFormPassword(e.target.value)}
+                    disabled={isPending}
+                    required
+                  />
+                </div>
+              )}
 
               {/* Roles Checkboxes */}
               <div className="form-group">

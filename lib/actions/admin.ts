@@ -21,6 +21,21 @@ async function checkAdminClearance() {
   return session;
 }
 
+async function hashPassword(password: string): Promise<string> {
+  const { betterAuth } = await import("better-auth");
+  const tempAuth = betterAuth({
+    database: {
+      provider: "sqlite",
+      db: {} as any
+    },
+    emailAndPassword: {
+      enabled: true
+    }
+  });
+  const authCtx = await tempAuth.$context;
+  return await authCtx.password.hash(password);
+}
+
 // ─────────────────────────────────────────────
 // MEMBER / USER ACTIONS
 // ─────────────────────────────────────────────
@@ -29,6 +44,7 @@ export async function createUserAction(data: {
   name: string;
   email: string;
   roleIds: string[];
+  password?: string;
 }) {
   const session = await checkAdminClearance();
   const ip = await getClientIP();
@@ -49,6 +65,20 @@ export async function createUserAction(data: {
         userId: newUser.id,
         roleId,
       })),
+    });
+  }
+
+  // Create credential account for Better Auth
+  if (data.password) {
+    const hashedPassword = await hashPassword(data.password);
+    await prisma.account.create({
+      data: {
+        id: crypto.randomUUID(),
+        userId: newUser.id,
+        accountId: newUser.id,
+        providerId: "credential",
+        password: hashedPassword,
+      },
     });
   }
 
