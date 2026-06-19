@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 
 function VerificationForm() {
@@ -9,15 +9,28 @@ function VerificationForm() {
 
   const [result, setResult] = useState<null | { valid: boolean; data?: Record<string, unknown>; message?: string }>(null);
   const [loading, setLoading] = useState(false);
+  const verifiedHashRef = useRef<string | null>(null);
 
   // Auto-verify if hash is present in search parameters
   useEffect(() => {
     const targetHash = hashParam || "";
 
     if (targetHash.trim()) {
-      triggerVerification(targetHash);
+      if (verifiedHashRef.current !== targetHash) {
+        verifiedHashRef.current = targetHash;
+        triggerVerification(targetHash);
+        
+        // Silently clear the hash query param from address bar so it does not persist in browser history
+        if (typeof window !== "undefined") {
+          window.history.replaceState({}, "", window.location.pathname);
+        }
+      }
     } else {
-      setResult(null);
+      if (verifiedHashRef.current === null) {
+        setResult(null);
+      } else {
+        verifiedHashRef.current = null;
+      }
     }
   }, [hashParam]);
 
