@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
         recipientName: cert.recipientName,
         type: cert.type,
         issueDate: cert.issueDate.toLocaleDateString("en-LK", { day: "numeric", month: "long", year: "numeric" }),
-        issuedBy: cert.issuedBy || "SEDS J'pura",
+        issuedBy: cert.issuedBy || "SEDS Jpura",
         status: cert.status,
         hash: cert.hash,
         ...(cert.description && { description: cert.description }),

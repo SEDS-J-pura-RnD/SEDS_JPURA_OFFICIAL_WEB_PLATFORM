@@ -896,7 +896,7 @@ export async function issueCertificateAction(data: {
       expiryDate: data.expiryDate || null,
       status: "VALID",
       hash,
-      issuedBy: session.user.name,
+      issuedBy: "SEDS Jpura",
     },
   });
 
