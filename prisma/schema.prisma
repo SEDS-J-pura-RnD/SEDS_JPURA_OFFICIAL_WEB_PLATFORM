@@ -163,8 +163,10 @@ model Project {
   isPublic     Boolean         @default(true)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
-  members      ProjectMember[]
-  division     Division        @relation(fields: [divisionId], references: [id])
+  members       ProjectMember[]
+  division      Division        @relation(fields: [divisionId], references: [id])
+  sponsors      Sponsor[]       @relation("ProjectSponsors")
+  collaborators Collaborator[]  @relation("ProjectCollaborators")
 
   @@map("projects")
   @@schema("public")
@@ -266,8 +268,23 @@ model Sponsor {
   endDate     DateTime?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+  projects    Project[]   @relation("ProjectSponsors")
 
   @@map("sponsors")
+  @@schema("public")
+}
+
+model Collaborator {
+  id          String    @id @default(cuid())
+  name        String
+  logoUrl     String?
+  website     String?
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  projects    Project[] @relation("ProjectCollaborators")
+
+  @@map("collaborators")
   @@schema("public")
 }
 

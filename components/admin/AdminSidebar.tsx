@@ -33,6 +33,7 @@ const navGroups = [
     items: [
       { href: "/admin/certificates", label: "Certificates", icon: "🏆" },
       { href: "/admin/sponsors", label: "Sponsors", icon: "🤝" },
+      { href: "/admin/collaborators", label: "Collaborators", icon: "🏢" },
       { href: "/admin/divisions", label: "Divisions", icon: "⚗️" },
       { href: "/admin/contact", label: "Inquiries", icon: "✉️" },
     ],

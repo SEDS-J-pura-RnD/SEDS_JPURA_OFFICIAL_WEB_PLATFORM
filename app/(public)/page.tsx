@@ -81,7 +81,6 @@ export default async function HomePage() {
         <div className="container">
           <div className="hero-content">
             <div className="hero-badge animate-fade-in">
-              <span>🌌</span>
               <span>SEDS J'pura</span>
             </div>
 

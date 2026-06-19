@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { isAdmin } from "@/lib/permissions";
 import Link from "next/link";
 import Image from "next/image";
+import DashboardCertificates from "./DashboardCertificates";
 
 export default async function MemberDashboardPage() {
   const { data: session } = await auth.getSession({ fetchOptions: { headers: await headers() } });
@@ -184,58 +185,8 @@ export default async function MemberDashboardPage() {
             )}
           </div>
 
-          {/* Certificates Card */}
-          <div className="card">
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.125rem", fontWeight: 700, marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <span>🏆</span> Acquired Certifications
-            </h2>
-
-            {certificates.length === 0 ? (
-              <div style={{ textAlign: "center", paddingBlock: "2rem", color: "var(--color-text-muted)" }}>
-                <p style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>📜</p>
-                <p style={{ fontSize: "0.875rem" }}>No credentials associated with your email yet.</p>
-                <p style={{ fontSize: "0.75rem", color: "var(--color-text-dim)", marginTop: "0.25rem" }}>Completed mission achievements will issue a verifiable certificate here.</p>
-              </div>
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "500px" }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid var(--color-border)", textAlign: "left" }}>
-                      <th style={{ padding: "0.75rem 0.5rem", fontSize: "0.75rem", letterSpacing: "0.05em", color: "var(--color-text-muted)" }}>CERTIFICATE ID</th>
-                      <th style={{ padding: "0.75rem 0.5rem", fontSize: "0.75rem", letterSpacing: "0.05em", color: "var(--color-text-muted)" }}>TYPE / MISSION</th>
-                      <th style={{ padding: "0.75rem 0.5rem", fontSize: "0.75rem", letterSpacing: "0.05em", color: "var(--color-text-muted)" }}>ISSUE DATE</th>
-                      <th style={{ padding: "0.75rem 0.5rem", fontSize: "0.75rem", letterSpacing: "0.05em", color: "var(--color-text-muted)" }}>STATUS</th>
-                      <th style={{ padding: "0.75rem 0.5rem" }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {certificates.map((cert) => (
-                      <tr key={cert.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                        <td style={{ padding: "0.75rem 0.5rem", fontSize: "0.8125rem", fontFamily: "var(--font-mono)", fontWeight: "bold" }}>{cert.certId}</td>
-                        <td style={{ padding: "0.75rem 0.5rem", fontSize: "0.8125rem" }}>
-                          <span style={{ fontWeight: 600 }}>{cert.type}</span>
-                          {cert.description && <div style={{ fontSize: "0.7rem", color: "var(--color-text-dim)" }}>{cert.description}</div>}
-                        </td>
-                        <td style={{ padding: "0.75rem 0.5rem", fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>
-                          {new Date(cert.issueDate).toLocaleDateString()}
-                        </td>
-                        <td style={{ padding: "0.75rem 0.5rem", fontSize: "0.8125rem" }}>
-                          <span className={`badge ${cert.status === "VALID" ? "badge-aurora" : "badge-danger"}`}>
-                            {cert.status}
-                          </span>
-                        </td>
-                        <td style={{ padding: "0.75rem 0.5rem", textAlign: "right" }}>
-                          <Link href={`/certificates/verify?id=${cert.certId}`} className="btn btn-ghost btn-sm" style={{ padding: "0.25rem 0.5rem" }}>
-                            Verify
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          {/* Certificates Component with secure QR overlay functionality */}
+          <DashboardCertificates certificates={certificates} />
         </div>
       </div>
     </div>

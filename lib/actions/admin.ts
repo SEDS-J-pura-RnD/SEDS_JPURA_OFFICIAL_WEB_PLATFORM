@@ -472,12 +472,24 @@ export async function createProjectAction(data: {
   startDate?: Date;
   endDate?: Date;
   isPublic: boolean;
+  sponsorIds?: string[];
+  collaboratorIds?: string[];
 }) {
   const session = await checkAdminClearance();
   const ip = await getClientIP();
 
+  const { sponsorIds, collaboratorIds, ...rest } = data;
+
   const project = await prisma.project.create({
-    data,
+    data: {
+      ...rest,
+      sponsors: sponsorIds && sponsorIds.length > 0 ? {
+        connect: sponsorIds.map((id) => ({ id })),
+      } : undefined,
+      collaborators: collaboratorIds && collaboratorIds.length > 0 ? {
+        connect: collaboratorIds.map((id) => ({ id })),
+      } : undefined,
+    },
   });
 
   await logAudit({
@@ -508,6 +520,8 @@ export async function updateProjectAction(
     startDate?: Date;
     endDate?: Date;
     isPublic: boolean;
+    sponsorIds?: string[];
+    collaboratorIds?: string[];
   }
 ) {
   const session = await checkAdminClearance();
@@ -516,9 +530,19 @@ export async function updateProjectAction(
   const prevProject = await prisma.project.findUnique({ where: { id: projectId } });
   if (!prevProject) throw new Error("Project record not found.");
 
+  const { sponsorIds, collaboratorIds, ...rest } = data;
+
   const updated = await prisma.project.update({
     where: { id: projectId },
-    data,
+    data: {
+      ...rest,
+      sponsors: {
+        set: sponsorIds ? sponsorIds.map((id) => ({ id })) : [],
+      },
+      collaborators: {
+        set: collaboratorIds ? collaboratorIds.map((id) => ({ id })) : [],
+      },
+    },
   });
 
   await logAudit({
@@ -956,5 +980,94 @@ export async function deleteInquiryAction(inquiryId: string) {
   });
   
   revalidatePath("/admin/contact");
+  return { success: true };
+}
+
+// ─────────────────────────────────────────────
+// COLLABORATOR ACTIONS
+// ─────────────────────────────────────────────
+
+export async function createCollaboratorAction(data: {
+  name: string;
+  logoUrl?: string;
+  website?: string;
+  description?: string;
+}) {
+  const session = await checkAdminClearance();
+  const ip = await getClientIP();
+
+  const collaborator = await prisma.collaborator.create({
+    data,
+  });
+
+  await logAudit({
+    userId: session.user.id,
+    action: "COLLABORATOR_CREATED",
+    entity: "Collaborator",
+    entityId: collaborator.id,
+    newState: collaborator,
+    ipAddress: ip,
+  });
+
+  revalidatePath("/admin/collaborators");
+  revalidatePath("/projects");
+  return { success: true };
+}
+
+export async function updateCollaboratorAction(
+  collaboratorId: string,
+  data: {
+    name: string;
+    logoUrl?: string;
+    website?: string;
+    description?: string;
+  }
+) {
+  const session = await checkAdminClearance();
+  const ip = await getClientIP();
+
+  const prev = await prisma.collaborator.findUnique({ where: { id: collaboratorId } });
+  if (!prev) throw new Error("Collaborator record not found.");
+
+  const updated = await prisma.collaborator.update({
+    where: { id: collaboratorId },
+    data,
+  });
+
+  await logAudit({
+    userId: session.user.id,
+    action: "COLLABORATOR_UPDATED",
+    entity: "Collaborator",
+    entityId: collaboratorId,
+    prevState: prev,
+    newState: updated,
+    ipAddress: ip,
+  });
+
+  revalidatePath("/admin/collaborators");
+  revalidatePath("/projects");
+  return { success: true };
+}
+
+export async function deleteCollaboratorAction(collaboratorId: string) {
+  const session = await checkAdminClearance();
+  const ip = await getClientIP();
+
+  const prev = await prisma.collaborator.findUnique({ where: { id: collaboratorId } });
+  if (!prev) throw new Error("Collaborator record not found.");
+
+  await prisma.collaborator.delete({ where: { id: collaboratorId } });
+
+  await logAudit({
+    userId: session.user.id,
+    action: "COLLABORATOR_DELETED",
+    entity: "Collaborator",
+    entityId: collaboratorId,
+    prevState: prev,
+    ipAddress: ip,
+  });
+
+  revalidatePath("/admin/collaborators");
+  revalidatePath("/projects");
   return { success: true };
 }

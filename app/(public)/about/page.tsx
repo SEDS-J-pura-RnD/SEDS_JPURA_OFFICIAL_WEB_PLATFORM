@@ -86,12 +86,11 @@ const divisions = [
 ];
 
 const timeline = [
-  { year: "2020", event: "SEDS J'pura Founded", desc: "Established as the space research student chapter at USJ." },
-  { year: "2021", event: "First Rocket Launch", desc: "Successfully launched our first experimental rocket at a national competition." },
-  { year: "2022", event: "Satellite Project Initiated", desc: "Began development of a CubeSat communication system." },
-  { year: "2023", event: "International Competition", desc: "Participated in the Asia-Pacific Rover Challenge representing Sri Lanka." },
-  { year: "2024", event: "5 Divisions Formed", desc: "Expanded to five specialized research divisions with 100+ members." },
-  { year: "2025", event: "Platform Launch", desc: "Launched our digital management platform to better serve members." },
+  { year: "1980", event: "Global SEDS Founded", desc: "Founded on October 30, 1980 at MIT, Princeton, and Yale to empower students in space exploration." },
+  { year: "1982", event: "International Network", desc: "Established as an international student-run space organization during the first conference at GWU." },
+  { year: "2018", event: "SEDS Sri Lanka Founded", desc: "Established in September 2018 as the national group of SEDS Earth to promote space advocacy in Sri Lanka." },
+  { year: "2020", event: "SEDS J'pura Founded", desc: "Established as the official registered space tech student chapter at the University of Sri Jayewardenepura, Sri Lanka." },
+  { year: "2025", event: "Going Digital", desc: "Launched our digital platform to drive collaboration on space tech projects across the university." },
 ];
 
 export default function AboutPage() {
@@ -102,7 +101,7 @@ export default function AboutPage() {
         <div className="about-hero-bg" aria-hidden="true" />
         <div className="container">
           <div className="about-hero-content">
-            <div className="section-tag">🌌 WHO WE ARE</div>
+            <div className="section-tag">WHO WE ARE</div>
             <h1 className="section-title" style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", textAlign: "center" }}>
               About <span className="text-gradient">SEDS J&apos;pura</span>
             </h1>
@@ -110,6 +109,37 @@ export default function AboutPage() {
               The Students for the Exploration and Development of Space at the
               University of Sri Jayewardenepura — where curiosity meets the cosmos.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Origin & Story */}
+      <section className="section" style={{ borderBottom: "1px solid var(--color-border)", paddingBottom: "4rem" }}>
+        <div className="container">
+          <div className="section-header">
+            <div className="section-tag">GLOBAL ORIGIN TO LOCAL IMPACT</div>
+            <h2 className="section-title">
+              Our <span className="text-gradient">Story</span> &amp; Identity
+            </h2>
+          </div>
+          <div className="story-content" style={{ display: "flex", flexDirection: "column", gap: "1.5rem", maxWidth: "800px", margin: "0 auto", fontSize: "1.0625rem", lineHeight: "1.8", color: "var(--color-text-muted)" }}>
+            <p>
+              <strong>Students for the Exploration and Development of Space (SEDS)</strong> is a non-profit international student organization that empowers young people to participate and make an impact in space exploration. SEDS helps students develop their technical and leadership skills by providing opportunities to manage and participate in international projects as well as to attend conferences, publish their work, and develop their professional network, in order to help students become more effective in their present and future careers in industry, academia, government, and education.
+            </p>
+            <p>
+              SEDS was founded as a chapter-based organization in 1980 at MIT by Peter Diamandis, at Princeton University by Scott Scharfman, and at Yale University by Richard Sorkin. SEDS USA was founded as a national group in 1982 by Peter Diamandis, Bob Richards, and Todd Hawley. Today, it is the largest student-run space organization in the world, consisting of an international community of high school, undergraduate, and graduate students from a diverse range of educational backgrounds in chapters all over the globe.
+            </p>
+            <p>
+              As the local collective of the SEDS EARTH organization, <strong>SEDS Sri Lanka</strong> is manned by students and professional volunteers, leading to branches being established in many universities within the country.
+            </p>
+            <p>
+              <strong>SEDS J&apos;pura</strong> is the established and registered chapter of SEDS Sri Lanka within the University of Sri Jayewardenepura. With a highly motivated student base, SEDS J&apos;pura targets like-minded individuals to join the program, creating a beneficial impact for every party concerned.
+            </p>
+            <div style={{ textAlign: "center", marginTop: "1rem" }}>
+              <a href="https://en.wikipedia.org/wiki/Students_for_the_Exploration_and_Development_of_Space" target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ display: "inline-flex" }}>
+                Read SEDS Origin on Wikipedia
+              </a>
+            </div>
           </div>
         </div>
       </section>
@@ -169,7 +199,7 @@ export default function AboutPage() {
       <section className="section" id="divisions">
         <div className="container">
           <div className="section-header">
-            <div className="section-tag">⚗️ RESEARCH DIVISIONS</div>
+            <div className="section-tag">RESEARCH DIVISIONS</div>
             <h2 className="section-title">
               Our <span className="text-gradient">Five Divisions</span>
             </h2>
@@ -208,7 +238,7 @@ export default function AboutPage() {
       <section className="section">
         <div className="container">
           <div className="section-header">
-            <div className="section-tag">📅 OUR HISTORY</div>
+            <div className="section-tag">OUR HISTORY</div>
             <h2 className="section-title">
               Our <span className="text-gradient">Journey</span>
             </h2>

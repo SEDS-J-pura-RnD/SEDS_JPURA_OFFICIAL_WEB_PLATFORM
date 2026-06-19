@@ -37,6 +37,9 @@ export type AuditAction =
   | "SPONSOR_CREATED"
   | "SPONSOR_UPDATED"
   | "SPONSOR_DELETED"
+  | "COLLABORATOR_CREATED"
+  | "COLLABORATOR_UPDATED"
+  | "COLLABORATOR_DELETED"
   | "CONTACT_RECEIVED";
 
 export async function logAudit({

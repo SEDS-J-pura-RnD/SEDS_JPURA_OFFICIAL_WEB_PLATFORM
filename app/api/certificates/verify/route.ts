@@ -4,10 +4,10 @@ import { logAudit } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const certId = searchParams.get("id");
+  const hash = searchParams.get("hash");
 
-  if (!certId) {
-    return NextResponse.json({ valid: false, message: "Certificate ID is required." }, { status: 400 });
+  if (!hash) {
+    return NextResponse.json({ valid: false, message: "Cryptographic hash signature is required." }, { status: 400 });
   }
 
   // Rate limiting: log the IP
@@ -18,14 +18,14 @@ export async function GET(request: NextRequest) {
 
   try {
     const cert = await prisma.certificate.findUnique({
-      where: { certId: certId.trim().toUpperCase() },
+      where: { hash: hash.trim() },
     });
 
     if (!cert) {
       await logAudit({
         action: "CERTIFICATE_VERIFIED",
         entity: "Certificate",
-        prevState: { certId, result: "NOT_FOUND" },
+        prevState: { hash, result: "NOT_FOUND" },
         ipAddress,
       });
       return NextResponse.json({ valid: false, message: "Certificate not found in our records." });
@@ -45,11 +45,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       valid: true,
       data: {
+        certId: cert.certId,
         recipientName: cert.recipientName,
         type: cert.type,
         issueDate: cert.issueDate.toLocaleDateString("en-LK", { day: "numeric", month: "long", year: "numeric" }),
         issuedBy: cert.issuedBy || "SEDS J'pura",
         status: cert.status,
+        hash: cert.hash,
         ...(cert.description && { description: cert.description }),
       },
     });

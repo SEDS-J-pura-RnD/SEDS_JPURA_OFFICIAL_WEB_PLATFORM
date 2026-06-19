@@ -47,9 +47,9 @@ export default function ContactPage() {
             {/* Info */}
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               {[
-                { icon: "📍", title: "Location", text: "University of Sri Jayewardenepura\nNugegoda, Western Province\nSri Lanka" },
+                { icon: "📍", title: "Location", text: "University of Sri Jayewardenepura\nGangodawila, Nugegoda\nSri Lanka." },
                 { icon: "✉️", title: "Email", text: "sedsjpura@gmail.com" },
-                { icon: "🌐", title: "Social", text: "Follow us on Instagram, Facebook, and LinkedIn for updates." },
+                { icon: "🌐", title: "Social", text: "Follow us on Instagram, Facebook, LinkedIn, and Medium for updates." },
                 { icon: "🕐", title: "Response Time", text: "We typically respond within 1-3 business days." },
               ].map((item) => (
                 <div key={item.title} className="card" style={{ display: "flex", gap: "1rem", alignItems: "flex-start" }}>

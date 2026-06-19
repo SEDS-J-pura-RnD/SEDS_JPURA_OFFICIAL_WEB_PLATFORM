@@ -28,6 +28,11 @@ interface ProjectMember {
   };
 }
 
+interface AssociatedItem {
+  id: string;
+  name: string;
+}
+
 interface Project {
   id: string;
   title: string;
@@ -42,6 +47,8 @@ interface Project {
   endDate: Date | null;
   isPublic: boolean;
   members: ProjectMember[];
+  sponsors: AssociatedItem[];
+  collaborators: AssociatedItem[];
 }
 
 interface User {
@@ -54,12 +61,16 @@ interface ProjectsClientProps {
   initialProjects: Project[];
   divisions: Division[];
   users: User[];
+  sponsors: AssociatedItem[];
+  collaborators: AssociatedItem[];
 }
 
 export default function ProjectsClient({
   initialProjects,
   divisions,
   users,
+  sponsors,
+  collaborators,
 }: ProjectsClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -85,6 +96,8 @@ export default function ProjectsClient({
   const [startDateStr, setStartDateStr] = useState("");
   const [endDateStr, setEndDateStr] = useState("");
   const [isPublic, setIsPublic] = useState(true);
+  const [selectedSponsorIds, setSelectedSponsorIds] = useState<string[]>([]);
+  const [selectedCollaboratorIds, setSelectedCollaboratorIds] = useState<string[]>([]);
 
   // Member assignment fields
   const [assignUserId, setAssignUserId] = useState("");
@@ -110,6 +123,8 @@ export default function ProjectsClient({
     setStartDateStr("");
     setEndDateStr("");
     setIsPublic(true);
+    setSelectedSponsorIds([]);
+    setSelectedCollaboratorIds([]);
     setError("");
     setSuccess("");
     setModalOpen(true);
@@ -127,6 +142,8 @@ export default function ProjectsClient({
     setStartDateStr(project.startDate ? new Date(project.startDate).toISOString().split("T")[0] : "");
     setEndDateStr(project.endDate ? new Date(project.endDate).toISOString().split("T")[0] : "");
     setIsPublic(project.isPublic);
+    setSelectedSponsorIds(project.sponsors?.map((s) => s.id) || []);
+    setSelectedCollaboratorIds(project.collaborators?.map((c) => c.id) || []);
     setError("");
     setSuccess("");
     setModalOpen(true);
@@ -166,6 +183,8 @@ export default function ProjectsClient({
       startDate: startDateStr ? new Date(startDateStr) : undefined,
       endDate: endDateStr ? new Date(endDateStr) : undefined,
       isPublic,
+      sponsorIds: selectedSponsorIds,
+      collaboratorIds: selectedCollaboratorIds,
     };
 
     startTransition(async () => {
@@ -472,6 +491,54 @@ export default function ProjectsClient({
                 />
                 <span>Classify project as public listing</span>
               </label>
+
+              <div className="form-group" style={{ marginTop: "0.5rem" }}>
+                <label className="form-label" style={{ display: "block", marginBottom: "0.5rem" }}>Direct Project Sponsors</label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.5rem", maxHeight: "120px", overflowY: "auto", border: "1px solid var(--color-border)", padding: "0.75rem", borderRadius: "var(--radius-md)", background: "rgba(0,0,0,0.15)" }}>
+                  {sponsors.map((s) => (
+                    <label key={s.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8125rem", cursor: "pointer", color: "var(--color-text)" }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedSponsorIds.includes(s.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedSponsorIds([...selectedSponsorIds, s.id]);
+                          } else {
+                            setSelectedSponsorIds(selectedSponsorIds.filter((id) => id !== s.id));
+                          }
+                        }}
+                        disabled={isPending}
+                      />
+                      <span>{s.name}</span>
+                    </label>
+                  ))}
+                  {sponsors.length === 0 && <span style={{ color: "var(--color-text-dim)", fontSize: "0.8125rem" }}>No sponsors registered.</span>}
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginTop: "0.5rem" }}>
+                <label className="form-label" style={{ display: "block", marginBottom: "0.5rem" }}>Collaborating Institutes</label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.5rem", maxHeight: "120px", overflowY: "auto", border: "1px solid var(--color-border)", padding: "0.75rem", borderRadius: "var(--radius-md)", background: "rgba(0,0,0,0.15)" }}>
+                  {collaborators.map((c) => (
+                    <label key={c.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8125rem", cursor: "pointer", color: "var(--color-text)" }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedCollaboratorIds.includes(c.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedCollaboratorIds([...selectedCollaboratorIds, c.id]);
+                          } else {
+                            setSelectedCollaboratorIds(selectedCollaboratorIds.filter((id) => id !== c.id));
+                          }
+                        }}
+                        disabled={isPending}
+                      />
+                      <span>{c.name}</span>
+                    </label>
+                  ))}
+                  {collaborators.length === 0 && <span style={{ color: "var(--color-text-dim)", fontSize: "0.8125rem" }}>No collaborators registered.</span>}
+                </div>
+              </div>
 
               {error && (
                 <div style={{ padding: "0.75rem", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "var(--radius-md)", color: "#fca5a5", fontSize: "0.8125rem" }}>

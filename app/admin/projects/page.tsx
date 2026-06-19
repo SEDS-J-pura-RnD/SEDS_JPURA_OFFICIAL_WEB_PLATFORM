@@ -14,6 +14,8 @@ async function getAdminProjectsData() {
           user: { select: { id: true, name: true, email: true } },
         },
       },
+      sponsors: { select: { id: true, name: true } },
+      collaborators: { select: { id: true, name: true } },
     },
   });
 
@@ -26,17 +28,29 @@ async function getAdminProjectsData() {
     select: { id: true, name: true, email: true },
   });
 
-  return { projects, divisions, users };
+  const sponsors = await prisma.sponsor.findMany({
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+
+  const collaborators = await prisma.collaborator.findMany({
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+
+  return { projects, divisions, users, sponsors, collaborators };
 }
 
 export default async function AdminProjectsPage() {
-  const { projects, divisions, users } = await getAdminProjectsData();
+  const { projects, divisions, users, sponsors, collaborators } = await getAdminProjectsData();
 
   return (
     <ProjectsClient
-      initialProjects={projects}
+      initialProjects={projects as any}
       divisions={divisions}
       users={users}
+      sponsors={sponsors}
+      collaborators={collaborators}
     />
   );
 }

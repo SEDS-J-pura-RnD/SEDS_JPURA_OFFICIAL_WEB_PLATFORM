@@ -44,24 +44,24 @@ export default function Footer() {
               Pioneering space research and technology in Sri Lanka.
             </p>
             <div className="footer-social">
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="Facebook">
+              <a href="https://www.facebook.com/share/1Hzgu5ruCM/" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="Facebook">
                 <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
                   <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
                 </svg>
               </a>
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="Instagram">
+              <a href="https://www.instagram.com/seds_jpura?igsh=ZjNmMjQxMGYwYmxp" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="Instagram">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
                   <rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
                 </svg>
               </a>
-              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="LinkedIn">
+              <a href="https://lk.linkedin.com/company/sedsjpura" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="LinkedIn">
                 <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
                   <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z" /><circle cx="4" cy="4" r="2" />
                 </svg>
               </a>
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="Twitter">
-                <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-                  <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
+              <a href="https://medium.com/@sedsjapura" target="_blank" rel="noopener noreferrer" className="social-link" aria-label="Medium">
+                <svg viewBox="0 0 16 16" fill="currentColor" width="18" height="18">
+                  <path d="M9.025 8c0 2.485-2.02 4.5-4.513 4.5A4.506 4.506 0 0 1 0 8c0-2.486 2.02-4.5 4.512-4.5A4.506 4.506 0 0 1 9.025 8m4.95 0c0 2.34-1.01 4.236-2.256 4.236S9.463 10.339 9.463 8c0-2.34 1.01-4.236 2.256-4.236S13.975 5.661 13.975 8M16 8c0 2.096-.355 3.795-.794 3.795-.438 0-.793-1.7-.793-3.795 0-2.096.355-3.795.794-3.795.438 0 .793 1.699.793 3.795"/>
                 </svg>
               </a>
             </div>
@@ -101,7 +101,7 @@ export default function Footer() {
             <div className="footer-contact">
               <div className="contact-item">
                 <span>📍</span>
-                <span>University of Sri Jayewardenepura,<br />Nugegoda, Sri Lanka</span>
+                <span>University of Sri Jayewardenepura,<br />Gangodawila, Nugegoda, Sri Lanka.</span>
               </div>
               <div className="contact-item">
                 <span>✉️</span>
