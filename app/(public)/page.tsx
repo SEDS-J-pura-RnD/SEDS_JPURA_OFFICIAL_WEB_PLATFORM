@@ -67,7 +67,7 @@ export default async function HomePage() {
   const stats = await getStats();
 
   return (
-    <div>
+    <div className="home-page-bg">
       {/* ─── HERO ─── */}
       <section className="hero">
         <div className="hero-bg" aria-hidden="true">
