@@ -86,7 +86,7 @@ const divisions = [
 ];
 
 const timeline = [
-  { year: "2020", event: "SEDS J'pura Founded", desc: "Established as the space research student chapter at USJP." },
+  { year: "2020", event: "SEDS J'pura Founded", desc: "Established as the space research student chapter at USJ." },
   { year: "2021", event: "First Rocket Launch", desc: "Successfully launched our first experimental rocket at a national competition." },
   { year: "2022", event: "Satellite Project Initiated", desc: "Began development of a CubeSat communication system." },
   { year: "2023", event: "International Competition", desc: "Participated in the Asia-Pacific Rover Challenge representing Sri Lanka." },
