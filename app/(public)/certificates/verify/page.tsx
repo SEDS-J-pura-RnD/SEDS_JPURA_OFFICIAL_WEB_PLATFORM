@@ -16,6 +16,8 @@ function VerificationForm() {
 
     if (targetHash.trim()) {
       triggerVerification(targetHash);
+    } else {
+      setResult(null);
     }
   }, [hashParam]);
 
