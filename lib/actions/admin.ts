@@ -3,7 +3,7 @@
 import { prisma } from "../db";
 import { auth } from "../auth";
 import { headers } from "next/headers";
-import { isAdmin, hasPermission, PERMISSIONS } from "../permissions";
+import { isAdmin, hasPermission, PERMISSIONS, Permission } from "../permissions";
 import { logAudit, getClientIP, AuditAction } from "../audit";
 import { revalidatePath } from "next/cache";
 import crypto from "crypto";
@@ -11,12 +11,12 @@ import crypto from "crypto";
 // ─────────────────────────────────────────────
 // AUTH & CLEARANCE CHECK UTILITY
 // ─────────────────────────────────────────────
-async function checkAdminClearance() {
+async function checkPermissionClearance(permission: Permission) {
   const { data: session } = await auth.getSession({ fetchOptions: { headers: await headers() } });
   if (!session) throw new Error("Unauthenticated. Access denied.");
   
-  const isUserAdmin = await isAdmin(session.user.id);
-  if (!isUserAdmin) throw new Error("Unauthorized. Administrative clearance required.");
+  const hasAccess = await hasPermission(session.user.id, permission);
+  if (!hasAccess) throw new Error(`Unauthorized. Missing required permission: ${permission}`);
   
   return session;
 }
@@ -46,7 +46,7 @@ export async function createUserAction(data: {
   roleIds: string[];
   password?: string;
 }) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.CREATE_USER);
   const ip = await getClientIP();
 
   // Create user
@@ -103,7 +103,7 @@ export async function updateUserAction(
     roleIds: string[];
   }
 ) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.EDIT_USER);
   const ip = await getClientIP();
 
   // Fetch previous state
@@ -149,7 +149,7 @@ export async function updateUserAction(
 }
 
 export async function deleteUserAction(targetUserId: string) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.DELETE_USER);
   const ip = await getClientIP();
 
   if (targetUserId === session.user.id) {
@@ -184,7 +184,7 @@ export async function createRoleAction(data: {
   name: string;
   description: string;
 }) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.MANAGE_ROLES);
   const ip = await getClientIP();
 
   const newRole = await prisma.role.create({
@@ -216,7 +216,7 @@ export async function updateRoleAction(
     isActive: boolean;
   }
 ) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.MANAGE_ROLES);
   const ip = await getClientIP();
 
   const prevRole = await prisma.role.findUnique({ where: { id: roleId } });
@@ -246,7 +246,7 @@ export async function updateRoleAction(
 }
 
 export async function deleteRoleAction(roleId: string) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.MANAGE_ROLES);
   const ip = await getClientIP();
 
   const role = await prisma.role.findUnique({
@@ -287,7 +287,7 @@ export async function togglePermissionAction(
   permissionId: string,
   assign: boolean
 ) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.MANAGE_PERMISSIONS);
   const ip = await getClientIP();
 
   if (assign) {
@@ -338,7 +338,7 @@ export async function updateDivisionAction(
     color: string;
   }
 ) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.MANAGE_DIVISIONS);
   const ip = await getClientIP();
 
   const prevDiv = await prisma.division.findUnique({ where: { id: divisionId } });
@@ -376,7 +376,7 @@ export async function createSponsorAction(data: {
   description?: string;
   isActive: boolean;
 }) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.MANAGE_SPONSORS);
   const ip = await getClientIP();
 
   const sponsor = await prisma.sponsor.create({
@@ -408,7 +408,7 @@ export async function updateSponsorAction(
     isActive: boolean;
   }
 ) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.MANAGE_SPONSORS);
   const ip = await getClientIP();
 
   const prevSponsor = await prisma.sponsor.findUnique({ where: { id: sponsorId } });
@@ -435,7 +435,7 @@ export async function updateSponsorAction(
 }
 
 export async function deleteSponsorAction(sponsorId: string) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.MANAGE_SPONSORS);
   const ip = await getClientIP();
 
   const prevSponsor = await prisma.sponsor.findUnique({ where: { id: sponsorId } });
@@ -475,7 +475,7 @@ export async function createProjectAction(data: {
   sponsorIds?: string[];
   collaboratorIds?: string[];
 }) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.CREATE_PROJECT);
   const ip = await getClientIP();
 
   const { sponsorIds, collaboratorIds, ...rest } = data;
@@ -524,7 +524,7 @@ export async function updateProjectAction(
     collaboratorIds?: string[];
   }
 ) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.EDIT_PROJECT);
   const ip = await getClientIP();
 
   const prevProject = await prisma.project.findUnique({ where: { id: projectId } });
@@ -563,7 +563,7 @@ export async function updateProjectAction(
 }
 
 export async function deleteProjectAction(projectId: string) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.DELETE_PROJECT);
   const ip = await getClientIP();
 
   const prev = await prisma.project.findUnique({ where: { id: projectId } });
@@ -591,7 +591,7 @@ export async function assignProjectMemberAction(
   userId: string,
   projectRole: "LEAD" | "MEMBER"
 ) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.ASSIGN_PROJECT_MEMBER);
   const ip = await getClientIP();
 
   await prisma.projectMember.upsert({
@@ -618,7 +618,7 @@ export async function assignProjectMemberAction(
 }
 
 export async function removeProjectMemberAction(projectId: string, userId: string) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.ASSIGN_PROJECT_MEMBER);
   const ip = await getClientIP();
 
   await prisma.projectMember.delete({
@@ -653,7 +653,7 @@ export async function createNewsAction(data: {
   tags: string[];
   isPublished: boolean;
 }) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.CREATE_NEWS);
   const ip = await getClientIP();
 
   const slug = data.title
@@ -700,7 +700,7 @@ export async function updateNewsAction(
     isPublished: boolean;
   }
 ) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.EDIT_NEWS);
   const ip = await getClientIP();
 
   const prevNews = await prisma.news.findUnique({ where: { id: newsId } });
@@ -742,7 +742,7 @@ export async function updateNewsAction(
 }
 
 export async function deleteNewsAction(newsId: string) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.DELETE_NEWS);
   const ip = await getClientIP();
 
   const prev = await prisma.news.findUnique({ where: { id: newsId } });
@@ -778,7 +778,7 @@ export async function createEventAction(data: {
   maxCapacity?: number;
   isPublished: boolean;
 }) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.CREATE_EVENT);
   const ip = await getClientIP();
 
   const event = await prisma.event.create({
@@ -812,7 +812,7 @@ export async function updateEventAction(
     isPublished: boolean;
   }
 ) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.EDIT_EVENT);
   const ip = await getClientIP();
 
   const prevEvent = await prisma.event.findUnique({ where: { id: eventId } });
@@ -840,7 +840,7 @@ export async function updateEventAction(
 }
 
 export async function deleteEventAction(eventId: string) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.DELETE_EVENT);
   const ip = await getClientIP();
 
   const prev = await prisma.event.findUnique({ where: { id: eventId } });
@@ -874,7 +874,7 @@ export async function issueCertificateAction(data: {
   description?: string;
   expiryDate?: Date;
 }) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.ISSUE_CERTIFICATE);
   const ip = await getClientIP();
 
   const issueDate = new Date();
@@ -915,7 +915,7 @@ export async function issueCertificateAction(data: {
 }
 
 export async function revokeCertificateAction(id: string, status: "VALID" | "REVOKED" | "EXPIRED") {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.REVOKE_CERTIFICATE);
   const ip = await getClientIP();
 
   const prev = await prisma.certificate.findUnique({ where: { id } });
@@ -948,7 +948,7 @@ export async function revokeCertificateAction(id: string, status: "VALID" | "REV
 // ─────────────────────────────────────────────
 
 export async function toggleInquiryReadAction(inquiryId: string, isRead: boolean) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.MANAGE_CONTACT);
   const ip = await getClientIP();
 
   const prev = await prisma.contactInquiry.findUnique({ where: { id: inquiryId } });
@@ -973,7 +973,7 @@ export async function toggleInquiryReadAction(inquiryId: string, isRead: boolean
 }
 
 export async function deleteInquiryAction(inquiryId: string) {
-  const session = checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.MANAGE_CONTACT);
   
   await prisma.contactInquiry.delete({
     where: { id: inquiryId },
@@ -993,7 +993,7 @@ export async function createCollaboratorAction(data: {
   website?: string;
   description?: string;
 }) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.MANAGE_SPONSORS);
   const ip = await getClientIP();
 
   const collaborator = await prisma.collaborator.create({
@@ -1023,7 +1023,7 @@ export async function updateCollaboratorAction(
     description?: string;
   }
 ) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.MANAGE_SPONSORS);
   const ip = await getClientIP();
 
   const prev = await prisma.collaborator.findUnique({ where: { id: collaboratorId } });
@@ -1050,7 +1050,7 @@ export async function updateCollaboratorAction(
 }
 
 export async function deleteCollaboratorAction(collaboratorId: string) {
-  const session = await checkAdminClearance();
+  const session = await checkPermissionClearance(PERMISSIONS.MANAGE_SPONSORS);
   const ip = await getClientIP();
 
   const prev = await prisma.collaborator.findUnique({ where: { id: collaboratorId } });

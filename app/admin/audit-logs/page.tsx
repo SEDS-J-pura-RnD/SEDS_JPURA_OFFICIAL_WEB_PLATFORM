@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/db";
 import type { Metadata } from "next";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { hasPermission, PERMISSIONS } from "@/lib/permissions";
 
 export const metadata: Metadata = { title: "Audit Logs | Admin" };
 
@@ -16,6 +20,12 @@ async function getLogs() {
 }
 
 export default async function AuditLogsPage() {
+  const { data: session } = await auth.getSession({ fetchOptions: { headers: await headers() } });
+  if (!session) redirect("/auth/login?callbackUrl=/admin/audit-logs");
+
+  const allowed = await hasPermission(session.user.id, PERMISSIONS.VIEW_LOGS);
+  if (!allowed) redirect("/admin");
+
   const logs = await getLogs();
 
   return (

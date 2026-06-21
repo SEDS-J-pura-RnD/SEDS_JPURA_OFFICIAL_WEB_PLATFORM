@@ -4,47 +4,60 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "@/lib/auth-client";
 
-const navGroups = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: string;
+  permission?: string | string[];
+}
+
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+const navGroups: NavGroup[] = [
   {
     label: "Overview",
     items: [
       { href: "/admin", label: "Dashboard", icon: "🏠" },
-      { href: "/admin/audit-logs", label: "Audit Logs", icon: "📋" },
+      { href: "/admin/audit-logs", label: "Audit Logs", icon: "📋", permission: "VIEW_LOGS" },
     ],
   },
   {
     label: "Users & Access",
     items: [
-      { href: "/admin/users", label: "Users", icon: "👥" },
-      { href: "/admin/roles", label: "Roles", icon: "🎭" },
-      { href: "/admin/permissions", label: "Permissions", icon: "🔑" },
+      { href: "/admin/users", label: "Users", icon: "👥", permission: "VIEW_USERS" },
+      { href: "/admin/roles", label: "Roles", icon: "🎭", permission: "MANAGE_ROLES" },
+      { href: "/admin/permissions", label: "Permissions", icon: "🔑", permission: "MANAGE_PERMISSIONS" },
     ],
   },
   {
     label: "Content",
     items: [
-      { href: "/admin/projects", label: "Projects", icon: "🔬" },
-      { href: "/admin/news", label: "News", icon: "📰" },
-      { href: "/admin/events", label: "Events", icon: "📅" },
+      { href: "/admin/projects", label: "Projects", icon: "🔬", permission: ["CREATE_PROJECT", "EDIT_PROJECT", "DELETE_PROJECT", "ASSIGN_PROJECT_MEMBER", "VIEW_ALL_PROJECTS"] },
+      { href: "/admin/news", label: "News", icon: "📰", permission: ["CREATE_NEWS", "EDIT_NEWS", "DELETE_NEWS", "PUBLISH_NEWS"] },
+      { href: "/admin/events", label: "Events", icon: "📅", permission: ["CREATE_EVENT", "EDIT_EVENT", "DELETE_EVENT", "MANAGE_EVENTS"] },
     ],
   },
   {
     label: "Operations",
     items: [
-      { href: "/admin/certificates", label: "Certificates", icon: "🏆" },
-      { href: "/admin/sponsors", label: "Sponsors", icon: "🤝" },
-      { href: "/admin/collaborators", label: "Collaborators", icon: "🏢" },
-      { href: "/admin/divisions", label: "Divisions", icon: "⚗️" },
-      { href: "/admin/contact", label: "Inquiries", icon: "✉️" },
+      { href: "/admin/certificates", label: "Certificates", icon: "🏆", permission: ["ISSUE_CERTIFICATE", "REVOKE_CERTIFICATE"] },
+      { href: "/admin/sponsors", label: "Sponsors", icon: "🤝", permission: "MANAGE_SPONSORS" },
+      { href: "/admin/collaborators", label: "Collaborators", icon: "🏢", permission: "MANAGE_SPONSORS" },
+      { href: "/admin/divisions", label: "Divisions", icon: "⚗️", permission: "MANAGE_DIVISIONS" },
+      { href: "/admin/contact", label: "Inquiries", icon: "✉️", permission: "MANAGE_CONTACT" },
     ],
   },
 ];
 
 interface AdminSidebarProps {
   user: { name: string; email: string; image?: string | null };
+  permissions: string[];
 }
 
-export default function AdminSidebar({ user }: AdminSidebarProps) {
+export default function AdminSidebar({ user, permissions }: AdminSidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -71,24 +84,36 @@ export default function AdminSidebar({ user }: AdminSidebarProps) {
         </Link>
       </div>
 
-      {navGroups.map((group) => (
-        <div key={group.label} className="sidebar-nav-group">
-          <div className="sidebar-nav-label">{group.label}</div>
-          {group.items.map((item) => {
-            const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`sidebar-nav-item ${active ? "active" : ""}`}
-              >
-                <span className="sidebar-nav-icon">{item.icon}</span>
-                {item.label}
-              </Link>
-            );
-          })}
-        </div>
-      ))}
+      {navGroups.map((group) => {
+        const visibleItems = group.items.filter(item => {
+          if (!item.permission) return true;
+          if (Array.isArray(item.permission)) {
+            return item.permission.some(p => permissions.includes(p));
+          }
+          return permissions.includes(item.permission);
+        });
+
+        if (visibleItems.length === 0) return null;
+
+        return (
+          <div key={group.label} className="sidebar-nav-group">
+            <div className="sidebar-nav-label">{group.label}</div>
+            {visibleItems.map((item) => {
+              const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`sidebar-nav-item ${active ? "active" : ""}`}
+                >
+                  <span className="sidebar-nav-icon">{item.icon}</span>
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        );
+      })}
 
       {/* User + actions at bottom */}
       <div style={{ marginTop: "auto", padding: "0 1rem", borderTop: "1px solid var(--color-border)", paddingTop: "1rem" }}>

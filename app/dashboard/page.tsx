@@ -142,18 +142,7 @@ export default async function MemberDashboardPage() {
                 {projectMembers.map((pm) => (
                   <div
                     key={pm.projectId}
-                    style={{
-                      padding: "1rem",
-                      borderRadius: "var(--radius-md)",
-                      background: "rgba(15, 23, 42, 0.4)",
-                      border: "1px solid var(--color-border)",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "0.75rem",
-                      transition: "border-color var(--transition-fast)"
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--color-border-bright)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--color-border)")}
+                    className="project-card-interactive"
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem" }}>
                       <div>

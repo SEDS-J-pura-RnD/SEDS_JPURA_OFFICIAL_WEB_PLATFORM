@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { isAdmin } from "@/lib/permissions";
+import { isAdmin, getUserPermissions } from "@/lib/permissions";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 
 export default async function AdminLayout({
@@ -15,9 +15,11 @@ export default async function AdminLayout({
   const hasAccess = await isAdmin(session.user.id);
   if (!hasAccess) redirect("/dashboard");
 
+  const permissions = await getUserPermissions(session.user.id);
+
   return (
     <div className="admin-layout">
-      <AdminSidebar user={session.user} />
+      <AdminSidebar user={session.user} permissions={permissions} />
       <main className="admin-main">{children}</main>
     </div>
   );

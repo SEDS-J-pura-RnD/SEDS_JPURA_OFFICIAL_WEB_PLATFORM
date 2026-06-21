@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { getUserPermissions } from "@/lib/permissions";
 
 export const metadata: Metadata = { title: "Admin Dashboard" };
 
@@ -22,25 +26,36 @@ async function getStats() {
 }
 
 export default async function AdminDashboardPage() {
+  const { data: session } = await auth.getSession({ fetchOptions: { headers: await headers() } });
+  if (!session) redirect("/auth/login?callbackUrl=/admin");
+
+  const permissions = await getUserPermissions(session.user.id);
   const stats = await getStats();
 
+  const hasPermission = (required: string | string[]) => {
+    if (typeof required === "string") {
+      return permissions.includes(required);
+    }
+    return required.some(p => permissions.includes(p));
+  };
+
   const statCards = [
-    { icon: "👥", label: "Total Users", value: stats.users, href: "/admin/users", color: "#6366f1" },
-    { icon: "🔬", label: "Projects", value: stats.projects, href: "/admin/projects", color: "#38bdf8" },
-    { icon: "📅", label: "Events", value: stats.events, href: "/admin/events", color: "#10b981" },
-    { icon: "📰", label: "Published News", value: stats.news, href: "/admin/news", color: "#f59e0b" },
-    { icon: "🏆", label: "Certificates", value: stats.certificates, href: "/admin/certificates", color: "#a855f7" },
-    { icon: "✉️", label: "Unread Inquiries", value: stats.inquiries, href: "/admin/contact", color: "#ec4899" },
-  ];
+    { icon: "👥", label: "Total Users", value: stats.users, href: "/admin/users", color: "#6366f1", permission: "VIEW_USERS" },
+    { icon: "🔬", label: "Projects", value: stats.projects, href: "/admin/projects", color: "#38bdf8", permission: ["CREATE_PROJECT", "EDIT_PROJECT", "DELETE_PROJECT", "ASSIGN_PROJECT_MEMBER", "VIEW_ALL_PROJECTS"] },
+    { icon: "📅", label: "Events", value: stats.events, href: "/admin/events", color: "#10b981", permission: ["CREATE_EVENT", "EDIT_EVENT", "DELETE_EVENT", "MANAGE_EVENTS"] },
+    { icon: "📰", label: "Published News", value: stats.news, href: "/admin/news", color: "#f59e0b", permission: ["CREATE_NEWS", "EDIT_NEWS", "DELETE_NEWS", "PUBLISH_NEWS"] },
+    { icon: "🏆", label: "Certificates", value: stats.certificates, href: "/admin/certificates", color: "#a855f7", permission: ["ISSUE_CERTIFICATE", "REVOKE_CERTIFICATE"] },
+    { icon: "✉️", label: "Unread Inquiries", value: stats.inquiries, href: "/admin/contact", color: "#ec4899", permission: "MANAGE_CONTACT" },
+  ].filter(card => !card.permission || hasPermission(card.permission));
 
   const quickActions = [
-    { href: "/admin/users", label: "Add User", icon: "👤" },
-    { href: "/admin/projects", label: "New Project", icon: "🚀" },
-    { href: "/admin/news", label: "Write News", icon: "✍️" },
-    { href: "/admin/certificates", label: "Issue Certificate", icon: "🏆" },
-    { href: "/admin/events", label: "Create Event", icon: "📅" },
-    { href: "/admin/roles", label: "Manage Roles", icon: "🎭" },
-  ];
+    { href: "/admin/users", label: "Add User", icon: "👤", permission: "CREATE_USER" },
+    { href: "/admin/projects", label: "New Project", icon: "🚀", permission: "CREATE_PROJECT" },
+    { href: "/admin/news", label: "Write News", icon: "✍️", permission: "CREATE_NEWS" },
+    { href: "/admin/certificates", label: "Issue Certificate", icon: "🏆", permission: "ISSUE_CERTIFICATE" },
+    { href: "/admin/events", label: "Create Event", icon: "📅", permission: "CREATE_EVENT" },
+    { href: "/admin/roles", label: "Manage Roles", icon: "🎭", permission: "MANAGE_ROLES" },
+  ].filter(action => !action.permission || hasPermission(action.permission));
 
   return (
     <div>
@@ -65,43 +80,49 @@ export default async function AdminDashboardPage() {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginTop: "2rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: hasPermission("VIEW_LOGS") ? "1fr 1fr" : "1fr", gap: "1.5rem", marginTop: "2rem" }}>
         {/* Quick Actions */}
         <div className="card">
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: "0.875rem", fontWeight: 700, letterSpacing: "0.1em", color: "var(--color-text-muted)", marginBottom: "1.25rem" }}>⚡ QUICK ACTIONS</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-            {quickActions.map((action) => (
-              <Link key={action.href} href={action.href} className="btn btn-ghost" style={{ justifyContent: "flex-start", fontSize: "0.875rem" }}>
-                <span>{action.icon}</span> {action.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent Audit Logs */}
-        <div className="card">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "0.875rem", fontWeight: 700, letterSpacing: "0.1em", color: "var(--color-text-muted)" }}>📋 RECENT ACTIVITY</h2>
-            <Link href="/admin/audit-logs" style={{ fontSize: "0.75rem", color: "var(--color-cosmic)" }}>View All →</Link>
-          </div>
-          {stats.auditLogs.length === 0 ? (
-            <p style={{ fontSize: "0.875rem", color: "var(--color-text-dim)" }}>No activity yet.</p>
+          {quickActions.length === 0 ? (
+            <p style={{ fontSize: "0.875rem", color: "var(--color-text-dim)" }}>No active options available for your current clearance level.</p>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
-              {(stats.auditLogs as Array<{id: string; action: string; entity: string; createdAt: Date; user?: {name: string} | null}>).map((log) => (
-                <div key={log.id} style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", paddingBottom: "0.625rem", borderBottom: "1px solid rgba(99,102,241,0.06)" }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(99,102,241,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", flexShrink: 0 }}>⚡</div>
-                  <div>
-                    <div style={{ fontSize: "0.8125rem", fontWeight: 600 }}>{log.action.replace(/_/g, " ")}</div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--color-text-dim)" }}>
-                      {log.user?.name || "System"} · {log.entity} · {new Date(log.createdAt).toLocaleTimeString()}
-                    </div>
-                  </div>
-                </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+              {quickActions.map((action) => (
+                <Link key={action.href} href={action.href} className="btn btn-ghost" style={{ justifyContent: "flex-start", fontSize: "0.875rem" }}>
+                  <span>{action.icon}</span> {action.label}
+                </Link>
               ))}
             </div>
           )}
         </div>
+
+        {/* Recent Audit Logs */}
+        {hasPermission("VIEW_LOGS") && (
+          <div className="card">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
+              <h2 style={{ fontFamily: "var(--font-display)", fontSize: "0.875rem", fontWeight: 700, letterSpacing: "0.1em", color: "var(--color-text-muted)" }}>📋 RECENT ACTIVITY</h2>
+              <Link href="/admin/audit-logs" style={{ fontSize: "0.75rem", color: "var(--color-cosmic)" }}>View All →</Link>
+            </div>
+            {stats.auditLogs.length === 0 ? (
+              <p style={{ fontSize: "0.875rem", color: "var(--color-text-dim)" }}>No activity yet.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+                {(stats.auditLogs as Array<{id: string; action: string; entity: string; createdAt: Date; user?: {name: string} | null}>).map((log) => (
+                  <div key={log.id} style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", paddingBottom: "0.625rem", borderBottom: "1px solid rgba(99,102,241,0.06)" }}>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(99,102,241,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", flexShrink: 0 }}>⚡</div>
+                    <div>
+                      <div style={{ fontSize: "0.8125rem", fontWeight: 600 }}>{log.action.replace(/_/g, " ")}</div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--color-text-dim)" }}>
+                        {log.user?.name || "System"} · {log.entity} · {new Date(log.createdAt).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

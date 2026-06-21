@@ -365,6 +365,21 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: var(--glow-stellar);
 }
 
+.project-card-interactive {
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: border-color var(--transition-fast);
+}
+
+.project-card-interactive:hover {
+  border-color: var(--color-border-bright);
+}
+
 /* ─────────────────────────────────────────────
    BADGES
    ───────────────────────────────────────────── */
