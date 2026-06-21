@@ -99,6 +99,34 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
     setRegsModalOpen(true);
   }
 
+  async function handleExportRegistrations() {
+    if (!selectedEventForRegs || selectedEventForRegs.registrations.length === 0) return;
+
+    try {
+      const XLSX = await import("xlsx");
+      
+      const data = selectedEventForRegs.registrations.map(reg => ({
+        "Registration ID": reg.id,
+        "Attendee Name": reg.name,
+        "Attendee Email": reg.email,
+        "Attendee Phone": reg.phone || "N/A",
+        "Registration Date": new Date(reg.createdAt).toLocaleString(),
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Attendees");
+      
+      const maxLens = [25, 25, 30, 15, 25];
+      ws["!cols"] = maxLens.map(w => ({ wch: w }));
+
+      const filename = `${selectedEventForRegs.title.replace(/[^a-z0-9]/gi, "_")}_Participation_List.xlsx`;
+      XLSX.writeFile(wb, filename);
+    } catch (err: any) {
+      alert("Failed to export registrations: " + err.message);
+    }
+  }
+
   async function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -383,9 +411,20 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
           <div onClick={() => setRegsModalOpen(false)} style={{ position: "absolute", inset: 0, background: "rgba(3, 7, 18, 0.8)", backdropFilter: "blur(4px)" }} />
           
           <div className="card" style={{ width: "100%", maxWidth: "550px", position: "relative", zIndex: 1, maxHeight: "90vh", overflowY: "auto", boxShadow: "var(--glow-cosmic)" }}>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.25rem", fontWeight: 800, marginBottom: "0.5rem" }}>
-              👥 Event Attendees
-            </h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+              <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.25rem", fontWeight: 800, margin: 0 }}>
+                👥 Event Attendees
+              </h2>
+              {selectedEventForRegs.registrations.length > 0 && (
+                <button
+                  onClick={handleExportRegistrations}
+                  className="btn btn-secondary btn-sm"
+                  style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.4rem 0.8rem", fontSize: "0.75rem" }}
+                >
+                  📥 Export to Excel
+                </button>
+              )}
+            </div>
             <p style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)", marginBottom: "1.5rem" }}>
               Event: <span style={{ color: "var(--color-stellar)", fontWeight: 600 }}>{selectedEventForRegs.title}</span>
             </p>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createUserAction, updateUserAction, deleteUserAction } from "@/lib/actions/admin";
+import { createUserAction, updateUserAction, deleteUserAction, createBulkUsersAction } from "@/lib/actions/admin";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -49,6 +49,147 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
   
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // Bulk Import States
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [bulkUsers, setBulkUsers] = useState<{
+    name: string;
+    email: string;
+    password?: string;
+    roleNames: string[];
+    isValid: boolean;
+    errors: string[];
+  }[]>([]);
+  const [bulkImportProgress, setBulkImportProgress] = useState(false);
+  const [bulkImportResult, setBulkImportResult] = useState<{
+    success: boolean;
+    createdCount: number;
+    skippedCount: number;
+    errors: string[];
+  } | null>(null);
+
+  async function handleDownloadTemplate() {
+    const XLSX = await import("xlsx");
+    const headers = [["Name", "Email", "Password", "Roles"]];
+    const sampleData = [
+      ["Arthur Dent", "arthur.dent@galaxy.com", "galaxyPass123", "Member"],
+      ["Tricia McMillan", "trillian@galaxy.com", "trillianPass456", "Project Lead, Member"],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([...headers, ...sampleData]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Users Template");
+    XLSX.writeFile(wb, "SEDS_Bulk_Users_Template.xlsx");
+  }
+
+  async function handleBulkUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError("");
+    setSuccess("");
+    setBulkImportResult(null);
+
+    const XLSX = await import("xlsx");
+    const reader = new FileReader();
+
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: "array" });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const rawRows = XLSX.utils.sheet_to_json<any>(worksheet, { defval: "" });
+
+        const parsedUsers = rawRows.map((row: any) => {
+          const rowKeys = Object.keys(row);
+          const nameKey = rowKeys.find(k => k.toLowerCase() === "name") || "Name";
+          const emailKey = rowKeys.find(k => k.toLowerCase() === "email") || "Email";
+          const passwordKey = rowKeys.find(k => k.toLowerCase() === "password") || "Password";
+          const rolesKey = rowKeys.find(k => k.toLowerCase() === "roles") || "Roles";
+
+          const name = String(row[nameKey] || "").trim();
+          const email = String(row[emailKey] || "").trim();
+          const password = String(row[passwordKey] || "").trim();
+          const rolesStr = String(row[rolesKey] || "").trim();
+
+          const roleNames = rolesStr ? rolesStr.split(",").map(r => r.trim()).filter(Boolean) : ["Member"];
+
+          const errors: string[] = [];
+          if (!name) errors.push("Name is required.");
+          if (!email) {
+            errors.push("Email is required.");
+          } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            errors.push("Invalid email signature.");
+          }
+          if (password && password.length < 8) {
+            errors.push("Password must be at least 8 characters.");
+          }
+
+          return {
+            name,
+            email,
+            password: password || undefined,
+            roleNames,
+            isValid: errors.length === 0,
+            errors,
+          };
+        });
+
+        if (parsedUsers.length === 0) {
+          alert("The uploaded Excel sheet contains no user records.");
+          return;
+        }
+
+        setBulkUsers(parsedUsers);
+        setBulkModalOpen(true);
+        e.target.value = "";
+      } catch (err: any) {
+        alert("Failed to parse Excel file: " + err.message);
+      }
+    };
+
+    reader.readAsArrayBuffer(file);
+  }
+
+  async function handleConfirmBulkImport() {
+    const validUsers = bulkUsers.filter(u => u.isValid);
+    if (validUsers.length === 0) {
+      alert("No valid user records to import.");
+      return;
+    }
+
+    setBulkImportProgress(true);
+    try {
+      const res = await createBulkUsersAction(
+        validUsers.map(u => ({
+          name: u.name,
+          email: u.email,
+          password: u.password,
+          roleNames: u.roleNames,
+        }))
+      );
+
+      setBulkImportResult({
+        success: res.success,
+        createdCount: res.createdCount,
+        skippedCount: res.skippedCount,
+        errors: res.errors,
+      });
+
+      if (res.success && res.createdCount > 0) {
+        router.refresh();
+      }
+    } catch (err: any) {
+      setBulkImportResult({
+        success: false,
+        createdCount: 0,
+        skippedCount: 0,
+        errors: [err.message || "An unexpected error occurred during bulk import."],
+      });
+    } finally {
+      setBulkImportProgress(false);
+    }
+  }
 
   // Filter users
   const filteredUsers = initialUsers.filter(
@@ -171,9 +312,23 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
           <h1 className="page-title">👥 Members Registry</h1>
           <p className="page-subtitle">{initialUsers.length} total space explorer accounts</p>
         </div>
-        <button onClick={openCreateModal} className="btn btn-primary">
-          ➕ Establish Account
-        </button>
+        <div style={{ display: "inline-flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
+          <button onClick={handleDownloadTemplate} className="btn btn-secondary">
+            📥 Download Template
+          </button>
+          <label className="btn btn-secondary" style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", margin: 0, gap: "0.25rem" }}>
+            📤 Upload Excel
+            <input
+              type="file"
+              accept=".xlsx, .xls"
+              onChange={handleBulkUpload}
+              style={{ display: "none" }}
+            />
+          </label>
+          <button onClick={openCreateModal} className="btn btn-primary">
+            ➕ Establish Account
+          </button>
+        </div>
       </div>
 
       {/* Filter Bar */}
@@ -357,6 +512,138 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Import Preview Modal */}
+      {bulkModalOpen && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          {/* Backdrop */}
+          <div onClick={() => !bulkImportProgress && setBulkModalOpen(false)} style={{ position: "absolute", inset: 0, background: "rgba(3, 7, 18, 0.8)", backdropFilter: "blur(4px)" }} />
+          
+          {/* Content */}
+          <div className="card" style={{ width: "100%", maxWidth: "800px", position: "relative", zIndex: 1, maxHeight: "90vh", overflowY: "auto", boxShadow: "var(--glow-cosmic)" }}>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.25rem", fontWeight: 800, marginBottom: "1.5rem" }}>
+              👥 Bulk Import Preview
+            </h2>
+
+            {bulkImportResult ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                <div style={{ padding: "1rem", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", borderRadius: "var(--radius-md)" }}>
+                  <h3 style={{ color: "#6ee7b7", fontWeight: 700, fontSize: "1rem", marginBottom: "0.5rem" }}>✔️ Import Process Complete</h3>
+                  <p style={{ fontSize: "0.875rem", color: "var(--color-text-muted)" }}>
+                    Successfully created <strong>{bulkImportResult.createdCount}</strong> new space explorer accounts.
+                    {bulkImportResult.skippedCount > 0 && ` Skipped ${bulkImportResult.skippedCount} accounts (either invalid or email signatures already registered).`}
+                  </p>
+                </div>
+
+                {bulkImportResult.errors.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                    <h4 style={{ fontSize: "0.875rem", color: "#fca5a5", fontWeight: 600 }}>Operational Alerts:</h4>
+                    <div style={{ padding: "0.75rem", background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "var(--radius-md)", maxHeight: "150px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                      {bulkImportResult.errors.map((err, i) => (
+                        <div key={i} style={{ fontSize: "0.75rem", color: "#fca5a5" }}>⚠️ {err}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    onClick={() => {
+                      setBulkModalOpen(false);
+                      setBulkImportResult(null);
+                      router.refresh();
+                    }}
+                    className="btn btn-primary"
+                  >
+                    Finish and Refresh Registry
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                {/* Stats Summary */}
+                <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: "120px", padding: "0.75rem", background: "rgba(255,255,255,0.02)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", textAlign: "center" }}>
+                    <div style={{ fontSize: "0.75rem", color: "var(--color-text-dim)" }}>TOTAL RECORDS</div>
+                    <div style={{ fontSize: "1.5rem", fontWeight: 800 }}>{bulkUsers.length}</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: "120px", padding: "0.75rem", background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "var(--radius-md)", textAlign: "center" }}>
+                    <div style={{ fontSize: "0.75rem", color: "#6ee7b7" }}>VALID & READY</div>
+                    <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#6ee7b7" }}>{bulkUsers.filter(u => u.isValid).length}</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: "120px", padding: "0.75rem", background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "var(--radius-md)", textAlign: "center" }}>
+                    <div style={{ fontSize: "0.75rem", color: "#fca5a5" }}>INVALID & SKIPPED</div>
+                    <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#fca5a5" }}>{bulkUsers.filter(u => !u.isValid).length}</div>
+                  </div>
+                </div>
+
+                {/* Preview Table */}
+                <div style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
+                  <div style={{ maxHeight: "300px", overflowY: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem", textAlign: "left" }}>
+                      <thead>
+                        <tr style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid var(--color-border)" }}>
+                          <th style={{ padding: "0.75rem" }}>EXPLORER</th>
+                          <th style={{ padding: "0.75rem" }}>EMAIL</th>
+                          <th style={{ padding: "0.75rem" }}>ROLES</th>
+                          <th style={{ padding: "0.75rem" }}>STATUS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bulkUsers.map((user, idx) => (
+                          <tr key={idx} style={{ borderBottom: "1px solid rgba(255,255,255,0.02)", background: user.isValid ? "transparent" : "rgba(239,68,68,0.02)" }}>
+                            <td style={{ padding: "0.75rem", fontWeight: 600 }}>{user.name || <em style={{ color: "var(--color-text-dim)" }}>[Empty]</em>}</td>
+                            <td style={{ padding: "0.75rem", color: "var(--color-text-muted)" }}>{user.email || <em style={{ color: "var(--color-text-dim)" }}>[Empty]</em>}</td>
+                            <td style={{ padding: "0.75rem" }}>
+                              <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
+                                {user.roleNames.map((r, i) => (
+                                  <span key={i} className="badge badge-cosmic" style={{ fontSize: "0.6rem" }}>{r}</span>
+                                ))}
+                              </div>
+                            </td>
+                            <td style={{ padding: "0.75rem" }}>
+                              {user.isValid ? (
+                                <span className="badge badge-aurora" style={{ fontSize: "0.6rem" }}>Ready</span>
+                              ) : (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+                                  <span className="badge badge-danger" style={{ fontSize: "0.6rem", width: "fit-content" }}>Invalid</span>
+                                  {user.errors.map((err, i) => (
+                                    <span key={i} style={{ fontSize: "0.65rem", color: "#fca5a5" }}>• {err}</span>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+                  <button
+                    type="button"
+                    onClick={() => setBulkModalOpen(false)}
+                    className="btn btn-ghost"
+                    disabled={bulkImportProgress}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmBulkImport}
+                    className="btn btn-primary"
+                    disabled={bulkImportProgress || bulkUsers.filter(u => u.isValid).length === 0}
+                  >
+                    {bulkImportProgress ? "Establishing Accounts..." : `Confirm Import (${bulkUsers.filter(u => u.isValid).length} accounts)`}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

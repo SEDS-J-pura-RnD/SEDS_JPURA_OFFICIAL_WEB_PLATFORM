@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { issueCertificateAction, revokeCertificateAction } from "@/lib/actions/admin";
+import { issueCertificateAction, revokeCertificateAction, issueBulkCertificatesAction } from "@/lib/actions/admin";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -43,6 +43,172 @@ export default function CertificatesClient({
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // Bulk Import States
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [bulkCerts, setBulkCerts] = useState<{
+    certId?: string;
+    recipientName: string;
+    recipientEmail?: string;
+    type: string;
+    description?: string;
+    expiryDate?: string;
+    isValid: boolean;
+    errors: string[];
+  }[]>([]);
+  const [bulkImportProgress, setBulkImportProgress] = useState(false);
+  const [bulkImportResult, setBulkImportResult] = useState<{
+    success: boolean;
+    createdCount: number;
+    skippedCount: number;
+    errors: string[];
+  } | null>(null);
+
+  async function handleDownloadTemplate() {
+    const XLSX = await import("xlsx");
+    const headers = [["Certificate ID", "Recipient Name", "Recipient Email", "Credential Type", "Description", "Expiry Date"]];
+    const sampleData = [
+      ["SEDS-2026-001", "Arthur Dent", "arthur.dent@galaxy.com", "Membership", "Standard active annual member", ""],
+      ["", "Tricia McMillan", "trillian@galaxy.com", "Achievement", "First female to launch to Orbit", "2030-12-31"],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([...headers, ...sampleData]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Certificates Template");
+    XLSX.writeFile(wb, "SEDS_Bulk_Certificates_Template.xlsx");
+  }
+
+  async function handleBulkUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError("");
+    setSuccess("");
+    setBulkImportResult(null);
+
+    const XLSX = await import("xlsx");
+    const reader = new FileReader();
+
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: "array" });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const rawRows = XLSX.utils.sheet_to_json<any>(worksheet, { defval: "" });
+
+        const parsedCerts = rawRows.map((row: any) => {
+          const rowKeys = Object.keys(row);
+          const certIdKey = rowKeys.find(k => k.toLowerCase().replace(/[\s_-]/g, "") === "certificateid") || "Certificate ID";
+          const nameKey = rowKeys.find(k => k.toLowerCase().replace(/[\s_-]/g, "") === "recipientname") || "Recipient Name";
+          const emailKey = rowKeys.find(k => k.toLowerCase().replace(/[\s_-]/g, "") === "recipientemail") || "Recipient Email";
+          const typeKey = rowKeys.find(k => k.toLowerCase().replace(/[\s_-]/g, "") === "credentialtype") || "Credential Type";
+          const descKey = rowKeys.find(k => k.toLowerCase() === "description") || "Description";
+          const expiryKey = rowKeys.find(k => k.toLowerCase().replace(/[\s_-]/g, "") === "expirydate") || "Expiry Date";
+
+          const certId = String(row[certIdKey] || "").trim();
+          const recipientName = String(row[nameKey] || "").trim();
+          const recipientEmail = String(row[emailKey] || "").trim();
+          const typeRaw = String(row[typeKey] || "").trim();
+          const description = String(row[descKey] || "").trim();
+          const expiryRaw = String(row[expiryKey] || "").trim();
+
+          const validTypes = ["Membership", "Event Participation", "Achievement", "Research Contribution"];
+          let type = "Membership";
+          const foundType = validTypes.find(t => t.toLowerCase() === typeRaw.toLowerCase());
+          if (foundType) {
+            type = foundType;
+          } else if (typeRaw) {
+            type = typeRaw;
+          }
+
+          const errors: string[] = [];
+          if (!recipientName) errors.push("Recipient Name is required.");
+          if (recipientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
+            errors.push("Invalid recipient email signature.");
+          }
+          if (!validTypes.includes(type)) {
+            errors.push(`Invalid Credential Type. Must be one of: ${validTypes.join(", ")}`);
+          }
+
+          let expiryDate: string | undefined = undefined;
+          if (expiryRaw) {
+            const parsedD = new Date(expiryRaw);
+            if (isNaN(parsedD.getTime())) {
+              errors.push("Invalid Expiry Date format.");
+            } else {
+              expiryDate = parsedD.toISOString();
+            }
+          }
+
+          return {
+            certId: certId || undefined,
+            recipientName,
+            recipientEmail: recipientEmail || undefined,
+            type,
+            description: description || undefined,
+            expiryDate,
+            isValid: errors.length === 0,
+            errors,
+          };
+        });
+
+        if (parsedCerts.length === 0) {
+          alert("The uploaded Excel sheet contains no certificate records.");
+          return;
+        }
+
+        setBulkCerts(parsedCerts);
+        setBulkModalOpen(true);
+        e.target.value = "";
+      } catch (err: any) {
+        alert("Failed to parse Excel file: " + err.message);
+      }
+    };
+
+    reader.readAsArrayBuffer(file);
+  }
+
+  async function handleConfirmBulkImport() {
+    const validCerts = bulkCerts.filter(c => c.isValid);
+    if (validCerts.length === 0) {
+      alert("No valid certificate records to issue.");
+      return;
+    }
+
+    setBulkImportProgress(true);
+    try {
+      const res = await issueBulkCertificatesAction(
+        validCerts.map(c => ({
+          certId: c.certId,
+          recipientName: c.recipientName,
+          recipientEmail: c.recipientEmail,
+          type: c.type,
+          description: c.description,
+          expiryDate: c.expiryDate,
+        }))
+      );
+
+      setBulkImportResult({
+        success: res.success,
+        createdCount: res.createdCount,
+        skippedCount: res.skippedCount,
+        errors: res.errors,
+      });
+
+      if (res.success && res.createdCount > 0) {
+        router.refresh();
+      }
+    } catch (err: any) {
+      setBulkImportResult({
+        success: false,
+        createdCount: 0,
+        skippedCount: 0,
+        errors: [err.message || "An unexpected error occurred during bulk issuance."],
+      });
+    } finally {
+      setBulkImportProgress(false);
+    }
+  }
 
   const filteredCerts = initialCertificates.filter(
     (c) =>
@@ -114,9 +280,23 @@ export default function CertificatesClient({
           <h1 className="page-title">🏆 Certificates Desk</h1>
           <p className="page-subtitle">Generate and verify cryptographic credentials for space achievements.</p>
         </div>
-        <button onClick={() => { setFormCertId(`SEDS-${new Date().getFullYear()}-${String(initialCertificates.length + 1).padStart(3, "0")}`); setRecipientName(""); setRecipientEmail(""); setType("Membership"); setDescription(""); setExpiryDateStr(""); setError(""); setSuccess(""); setModalOpen(true); }} className="btn btn-primary">
-          ➕ Issue Certificate
-        </button>
+        <div style={{ display: "inline-flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
+          <button onClick={handleDownloadTemplate} className="btn btn-secondary">
+            📥 Download Template
+          </button>
+          <label className="btn btn-secondary" style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", margin: 0, gap: "0.25rem" }}>
+            📤 Upload Excel
+            <input
+              type="file"
+              accept=".xlsx, .xls"
+              onChange={handleBulkUpload}
+              style={{ display: "none" }}
+            />
+          </label>
+          <button onClick={() => { setFormCertId(`SEDS-${new Date().getFullYear()}-${String(initialCertificates.length + 1).padStart(3, "0")}`); setRecipientName(""); setRecipientEmail(""); setType("Membership"); setDescription(""); setExpiryDateStr(""); setError(""); setSuccess(""); setModalOpen(true); }} className="btn btn-primary">
+            ➕ Issue Certificate
+          </button>
+        </div>
       </div>
 
       {/* Filter Bar */}
@@ -427,6 +607,140 @@ export default function CertificatesClient({
                 💾 Download QR
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Certificates Import Preview Modal */}
+      {bulkModalOpen && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          {/* Backdrop */}
+          <div onClick={() => !bulkImportProgress && setBulkModalOpen(false)} style={{ position: "absolute", inset: 0, background: "rgba(3, 7, 18, 0.8)", backdropFilter: "blur(4px)" }} />
+          
+          {/* Content */}
+          <div className="card" style={{ width: "100%", maxWidth: "850px", position: "relative", zIndex: 1, maxHeight: "90vh", overflowY: "auto", boxShadow: "var(--glow-cosmic)" }}>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.25rem", fontWeight: 800, marginBottom: "1.5rem" }}>
+              🏆 Bulk Certificates Issuance Preview
+            </h2>
+
+            {bulkImportResult ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                <div style={{ padding: "1rem", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", borderRadius: "var(--radius-md)" }}>
+                  <h3 style={{ color: "#6ee7b7", fontWeight: 700, fontSize: "1rem", marginBottom: "0.5rem" }}>✔️ Issuance Complete</h3>
+                  <p style={{ fontSize: "0.875rem", color: "var(--color-text-muted)" }}>
+                    Successfully issued <strong>{bulkImportResult.createdCount}</strong> new verifiable certificates.
+                    {bulkImportResult.skippedCount > 0 && ` Skipped ${bulkImportResult.skippedCount} certificate(s) due to existing Certificate IDs or validation failures.`}
+                  </p>
+                </div>
+
+                {bulkImportResult.errors.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                    <h4 style={{ fontSize: "0.875rem", color: "#fca5a5", fontWeight: 600 }}>System Warnings:</h4>
+                    <div style={{ padding: "0.75rem", background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "var(--radius-md)", maxHeight: "150px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                      {bulkImportResult.errors.map((err, i) => (
+                        <div key={i} style={{ fontSize: "0.75rem", color: "#fca5a5" }}>⚠️ {err}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    onClick={() => {
+                      setBulkModalOpen(false);
+                      setBulkImportResult(null);
+                      router.refresh();
+                    }}
+                    className="btn btn-primary"
+                  >
+                    Finish and Refresh Registry
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                {/* Stats Summary */}
+                <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: "120px", padding: "0.75rem", background: "rgba(255,255,255,0.02)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", textAlign: "center" }}>
+                    <div style={{ fontSize: "0.75rem", color: "var(--color-text-dim)" }}>TOTAL DETECTED</div>
+                    <div style={{ fontSize: "1.5rem", fontWeight: 800 }}>{bulkCerts.length}</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: "120px", padding: "0.75rem", background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "var(--radius-md)", textAlign: "center" }}>
+                    <div style={{ fontSize: "0.75rem", color: "#6ee7b7" }}>VALID & READY</div>
+                    <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#6ee7b7" }}>{bulkCerts.filter(c => c.isValid).length}</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: "120px", padding: "0.75rem", background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "var(--radius-md)", textAlign: "center" }}>
+                    <div style={{ fontSize: "0.75rem", color: "#fca5a5" }}>INVALID (SKIPPED)</div>
+                    <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#fca5a5" }}>{bulkCerts.filter(c => !c.isValid).length}</div>
+                  </div>
+                </div>
+
+                {/* Preview Table */}
+                <div style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
+                  <div style={{ maxHeight: "300px", overflowY: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem", textAlign: "left" }}>
+                      <thead>
+                        <tr style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid var(--color-border)" }}>
+                          <th style={{ padding: "0.75rem" }}>CERTIFICATE ID</th>
+                          <th style={{ padding: "0.75rem" }}>RECIPIENT NAME</th>
+                          <th style={{ padding: "0.75rem" }}>EMAIL</th>
+                          <th style={{ padding: "0.75rem" }}>CREDENTIAL TYPE</th>
+                          <th style={{ padding: "0.75rem" }}>EXPIRY DATE</th>
+                          <th style={{ padding: "0.75rem" }}>STATUS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bulkCerts.map((c, idx) => (
+                          <tr key={idx} style={{ borderBottom: "1px solid rgba(255,255,255,0.02)", background: c.isValid ? "transparent" : "rgba(239,68,68,0.02)" }}>
+                            <td style={{ padding: "0.75rem", fontFamily: "var(--font-mono)", fontWeight: "bold" }}>
+                              {c.certId || <span style={{ color: "var(--color-stellar)", fontStyle: "italic", fontSize: "0.75rem" }}>Auto-assigned</span>}
+                            </td>
+                            <td style={{ padding: "0.75rem", fontWeight: 600 }}>{c.recipientName || <em style={{ color: "var(--color-text-dim)" }}>[Empty]</em>}</td>
+                            <td style={{ padding: "0.75rem", color: "var(--color-text-muted)" }}>{c.recipientEmail || <span style={{ color: "var(--color-text-dim)", fontSize: "0.75rem" }}>None</span>}</td>
+                            <td style={{ padding: "0.75rem" }}>{c.type}</td>
+                            <td style={{ padding: "0.75rem", color: "var(--color-text-dim)" }}>
+                              {c.expiryDate ? new Date(c.expiryDate).toLocaleDateString() : <span style={{ color: "var(--color-text-dim)", fontSize: "0.75rem" }}>Never</span>}
+                            </td>
+                            <td style={{ padding: "0.75rem" }}>
+                              {c.isValid ? (
+                                <span className="badge badge-aurora" style={{ fontSize: "0.6rem" }}>Ready</span>
+                              ) : (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+                                  <span className="badge badge-danger" style={{ fontSize: "0.6rem", width: "fit-content" }}>Invalid</span>
+                                  {c.errors.map((err, i) => (
+                                    <span key={i} style={{ fontSize: "0.65rem", color: "#fca5a5" }}>• {err}</span>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+                  <button
+                    type="button"
+                    onClick={() => setBulkModalOpen(false)}
+                    className="btn btn-ghost"
+                    disabled={bulkImportProgress}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmBulkImport}
+                    className="btn btn-primary"
+                    disabled={bulkImportProgress || bulkCerts.filter(c => c.isValid).length === 0}
+                  >
+                    {bulkImportProgress ? "Issuing Certificates..." : `Confirm Issuance (${bulkCerts.filter(c => c.isValid).length} certificates)`}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

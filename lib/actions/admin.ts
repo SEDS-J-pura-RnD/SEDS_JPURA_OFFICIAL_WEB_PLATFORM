@@ -1071,3 +1071,219 @@ export async function deleteCollaboratorAction(collaboratorId: string) {
   revalidatePath("/projects");
   return { success: true };
 }
+
+// ─────────────────────────────────────────────
+// BULK OPERATIONS ACTIONS
+// ─────────────────────────────────────────────
+
+export async function createBulkUsersAction(users: {
+  name: string;
+  email: string;
+  password?: string;
+  roleNames: string[];
+}[]) {
+  const session = await checkPermissionClearance(PERMISSIONS.CREATE_USER);
+  const ip = await getClientIP();
+
+  const dbRoles = await prisma.role.findMany({ where: { isActive: true } });
+  const roleMap = new Map(dbRoles.map((r) => [r.name.toLowerCase().trim(), r.id]));
+
+  const results = [];
+  let createdCount = 0;
+  let skippedCount = 0;
+  const errors: string[] = [];
+
+  for (const u of users) {
+    try {
+      const email = u.email?.trim().toLowerCase();
+      const name = u.name?.trim();
+
+      if (!email || !name) {
+        errors.push(`Row with empty name or email skipped.`);
+        skippedCount++;
+        continue;
+      }
+
+      // Check if user already exists
+      const existing = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (existing) {
+        skippedCount++;
+        results.push({ email, status: "skipped", reason: "Email already exists" });
+        continue;
+      }
+
+      // Create user
+      const newUser = await prisma.user.create({
+        data: {
+          name,
+          email,
+          emailVerified: true,
+        },
+      });
+
+      // Assign roles
+      const matchedRoleIds: string[] = [];
+      if (u.roleNames && u.roleNames.length > 0) {
+        for (const roleName of u.roleNames) {
+          const roleId = roleMap.get(roleName.toLowerCase().trim());
+          if (roleId) {
+            matchedRoleIds.push(roleId);
+          }
+        }
+      }
+
+      if (matchedRoleIds.length > 0) {
+        await prisma.userRole.createMany({
+          data: matchedRoleIds.map((roleId) => ({
+            userId: newUser.id,
+            roleId,
+          })),
+        });
+      }
+
+      // Hash and set password if provided
+      if (u.password) {
+        const hashedPassword = await hashPassword(u.password);
+        await prisma.account.create({
+          data: {
+            id: crypto.randomUUID(),
+            userId: newUser.id,
+            accountId: newUser.id,
+            providerId: "credential",
+            password: hashedPassword,
+          },
+        });
+      }
+
+      createdCount++;
+      results.push({ email, status: "created" });
+    } catch (err: any) {
+      errors.push(`Failed to create user ${u.email}: ${err.message}`);
+      skippedCount++;
+    }
+  }
+
+  if (createdCount > 0) {
+    await logAudit({
+      userId: session.user.id,
+      action: "USER_CREATED",
+      entity: "User",
+      entityId: "BULK_OPERATION",
+      newState: { createdCount, skippedCount, errors },
+      ipAddress: ip,
+    });
+    revalidatePath("/admin/users");
+  }
+
+  return { success: true, createdCount, skippedCount, errors, results };
+}
+
+export async function issueBulkCertificatesAction(certs: {
+  certId?: string;
+  recipientName: string;
+  recipientEmail?: string;
+  type: string;
+  description?: string;
+  expiryDate?: string;
+}[]) {
+  const session = await checkPermissionClearance(PERMISSIONS.ISSUE_CERTIFICATE);
+  const ip = await getClientIP();
+
+  const results = [];
+  let createdCount = 0;
+  let skippedCount = 0;
+  const errors: string[] = [];
+
+  const currentCount = await prisma.certificate.count();
+  const currentYear = new Date().getFullYear();
+  let autoIdOffset = 1;
+
+  for (const c of certs) {
+    try {
+      const recipientName = c.recipientName?.trim();
+      const type = c.type?.trim() || "Membership";
+      const recipientEmail = c.recipientEmail?.trim() || null;
+      const description = c.description?.trim() || null;
+      const expiryDate = c.expiryDate ? new Date(c.expiryDate) : null;
+
+      if (!recipientName) {
+        errors.push(`Row with empty recipient name skipped.`);
+        skippedCount++;
+        continue;
+      }
+
+      let certId = "";
+      const trimmedCertId = c.certId?.trim();
+      if (!trimmedCertId) {
+        let isUnique = false;
+        while (!isUnique) {
+          const generatedId = `SEDS-${currentYear}-${String(currentCount + autoIdOffset).padStart(3, "0")}`;
+          const existingCert = await prisma.certificate.findUnique({
+            where: { certId: generatedId },
+          });
+          if (!existingCert) {
+            certId = generatedId;
+            isUnique = true;
+          }
+          autoIdOffset++;
+        }
+      } else {
+        certId = trimmedCertId;
+        const existingCert = await prisma.certificate.findUnique({
+          where: { certId },
+        });
+        if (existingCert) {
+          skippedCount++;
+          results.push({ certId, recipientName, status: "skipped", reason: "Certificate ID already exists" });
+          continue;
+        }
+      }
+
+      const issueDate = new Date();
+
+      const hash = crypto
+        .createHash("sha256")
+        .update(`${certId}-${recipientName}-${recipientEmail || ""}-${issueDate.toISOString()}`)
+        .digest("hex");
+
+      const certificate = await prisma.certificate.create({
+        data: {
+          certId,
+          recipientName,
+          recipientEmail,
+          type,
+          description,
+          issueDate,
+          expiryDate,
+          status: "VALID",
+          hash,
+          issuedBy: "SEDS Jpura",
+        },
+      });
+
+      createdCount++;
+      results.push({ certId, recipientName, status: "created", hash });
+    } catch (err: any) {
+      errors.push(`Failed to issue certificate for ${c.recipientName}: ${err.message}`);
+      skippedCount++;
+    }
+  }
+
+  if (createdCount > 0) {
+    await logAudit({
+      userId: session.user.id,
+      action: "CERTIFICATE_ISSUED",
+      entity: "Certificate",
+      entityId: "BULK_OPERATION",
+      newState: { createdCount, skippedCount, errors },
+      ipAddress: ip,
+    });
+    revalidatePath("/admin/certificates");
+  }
+
+  return { success: true, createdCount, skippedCount, errors, results };
+}
+
