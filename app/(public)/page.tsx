@@ -80,24 +80,31 @@ export default async function HomePage() {
 
         <div className="container">
           <div className="hero-content">
-            <div className="hero-badge animate-fade-in">
+            <div className="hero-badge animate-reveal-up delay-100">
               <span>SEDS J'pura</span>
             </div>
 
-            <h1 className="hero-title animate-slide-up">
-              Reaching for the{" "}
-              <span className="text-gradient">Stars</span>
-              <br />
-              Together
+            <h1 className="hero-title" style={{ display: "flex", flexDirection: "column" }}>
+              <span className="reveal-text-container">
+                <span className="animate-reveal-line delay-200">
+                  Reaching for the{" "}
+                  <span className="text-gradient-animate">Stars</span>
+                </span>
+              </span>
+              <span className="reveal-text-container">
+                <span className="animate-reveal-line delay-300">
+                  Together
+                </span>
+              </span>
             </h1>
 
-            <p className="hero-desc animate-fade-in">
+            <p className="hero-desc animate-reveal-up delay-400">
               Students for the Exploration and Development of Space — pioneering
               space research, rocketry, robotics, biomedical science, and
               astronomy at University of Sri Jayewardenepura, Sri Lanka.
             </p>
 
-            <div className="hero-actions animate-slide-up">
+            <div className="hero-actions animate-reveal-up delay-500">
               <Link href="/about" className="btn btn-primary btn-lg">
                 <span>🚀</span> Explore SEDS
               </Link>

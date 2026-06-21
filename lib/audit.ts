@@ -40,7 +40,8 @@ export type AuditAction =
   | "COLLABORATOR_CREATED"
   | "COLLABORATOR_UPDATED"
   | "COLLABORATOR_DELETED"
-  | "CONTACT_RECEIVED";
+  | "CONTACT_RECEIVED"
+  | "EVENT_REGISTRATION_CREATED";
 
 export async function logAudit({
   userId,

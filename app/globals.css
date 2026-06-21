@@ -2094,4 +2094,65 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* ─────────────────────────────────────────────
+   PREMIUM PROFESSIONAL TEXT REVEAL & SHIMMER ANIMATIONS
+   ───────────────────────────────────────────── */
+@keyframes revealUp {
+  0% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes revealLine {
+  0% {
+    transform: translateY(105%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes gradient-shimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.reveal-text-container {
+  display: block;
+  overflow: hidden;
+  position: relative;
+}
+
+.animate-reveal-line {
+  display: inline-block;
+  animation: revealLine 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-reveal-up {
+  animation: revealUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+.text-gradient-animate {
+  background: linear-gradient(135deg, #6366f1, #38bdf8, #ec4899, #38bdf8, #6366f1);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shimmer 10s ease infinite;
+}
+
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+
 
