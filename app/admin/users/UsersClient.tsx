@@ -5,6 +5,8 @@ import { createUserAction, updateUserAction, deleteUserAction, createBulkUsersAc
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+// ─── Types ───────────────────────────────────────────────────────────────────
+
 interface Role {
   id: string;
   name: string;
@@ -12,6 +14,10 @@ interface Role {
 
 interface UserRole {
   roleId: string;
+  position: string | null;
+  termFrom: number | null;
+  termTo: number | null;
+  displayOrder: number | null;
   role: {
     id: string;
     name: string;
@@ -32,11 +38,41 @@ interface UsersClientProps {
   roles: Role[];
 }
 
+// ─── Role assignment type used in form state ──────────────────────────────────
+
+interface RoleAssignment {
+  roleId: string;
+  position: string;
+  termFrom: string; // year as string for select value
+  termTo: string;
+  displayOrder: string; // numeric string, e.g. "1"
+}
+
+// ─── Year helpers ─────────────────────────────────────────────────────────────
+
+const YEAR_MIN = 2015;
+const YEAR_MAX = new Date().getFullYear() + 5;
+const YEARS = Array.from({ length: YEAR_MAX - YEAR_MIN + 1 }, (_, i) => YEAR_MIN + i);
+
+// ─── Badge label helper ───────────────────────────────────────────────────────
+
+function roleBadgeLabel(ur: UserRole): { primary: string; secondary: string | null } {
+  const primary = ur.role.name;
+  const parts: string[] = [];
+  if (ur.position) parts.push(ur.position);
+  if (ur.termFrom || ur.termTo) {
+    parts.push(`${ur.termFrom ?? "?"}–${ur.termTo ?? "?"}`);
+  }
+  return { primary, secondary: parts.length > 0 ? parts.join(" · ") : null };
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
 export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
-  
+
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -45,8 +81,10 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
   const [formName, setFormName] = useState("");
   const [formEmail, setFormEmail] = useState("");
   const [formPassword, setFormPassword] = useState("");
-  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
-  
+
+  // Role assignments: map from roleId → assignment details
+  const [roleAssignments, setRoleAssignments] = useState<Map<string, RoleAssignment>>(new Map());
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -68,6 +106,43 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
     errors: string[];
   } | null>(null);
 
+  // ── Role assignment helpers ──────────────────────────────────────────────────
+
+  function toggleRole(roleId: string, checked: boolean) {
+    setRoleAssignments((prev) => {
+      const next = new Map(prev);
+      if (checked) {
+        next.set(roleId, { roleId, position: "", termFrom: "", termTo: "", displayOrder: "" });
+      } else {
+        next.delete(roleId);
+      }
+      return next;
+    });
+  }
+
+  function updateAssignment(roleId: string, field: keyof RoleAssignment, value: string) {
+    setRoleAssignments((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(roleId);
+      if (existing) {
+        next.set(roleId, { ...existing, [field]: value });
+      }
+      return next;
+    });
+  }
+
+  function assignmentsToPayload() {
+    return Array.from(roleAssignments.values()).map(({ roleId, position, termFrom, termTo, displayOrder }) => ({
+      roleId,
+      position: position.trim() || undefined,
+      termFrom: termFrom ? parseInt(termFrom, 10) : undefined,
+      termTo: termTo ? parseInt(termTo, 10) : undefined,
+      displayOrder: displayOrder ? parseInt(displayOrder, 10) : undefined,
+    }));
+  }
+
+  // ── Template download ────────────────────────────────────────────────────────
+
   async function handleDownloadTemplate() {
     const XLSX = await import("xlsx");
     const headers = [["Name", "Email", "Password", "Roles"]];
@@ -80,6 +155,8 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
     XLSX.utils.book_append_sheet(wb, ws, "Users Template");
     XLSX.writeFile(wb, "SEDS_Bulk_Users_Template.xlsx");
   }
+
+  // ── Bulk upload parsing ──────────────────────────────────────────────────────
 
   async function handleBulkUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -191,19 +268,22 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
     }
   }
 
-  // Filter users
+  // ── Filter ───────────────────────────────────────────────────────────────────
+
   const filteredUsers = initialUsers.filter(
     (user) =>
       user.name.toLowerCase().includes(search.toLowerCase()) ||
       user.email.toLowerCase().includes(search.toLowerCase())
   );
 
+  // ── Modal open helpers ────────────────────────────────────────────────────────
+
   function openCreateModal() {
     setEditingUser(null);
     setFormName("");
     setFormEmail("");
     setFormPassword("");
-    setSelectedRoleIds([]);
+    setRoleAssignments(new Map());
     setError("");
     setSuccess("");
     setModalOpen(true);
@@ -214,19 +294,24 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
     setFormName(user.name);
     setFormEmail(user.email);
     setFormPassword("");
-    setSelectedRoleIds(user.userRoles.map((ur) => ur.roleId));
+    // Pre-populate existing assignments
+    const map = new Map<string, RoleAssignment>();
+    user.userRoles.forEach((ur) => {
+      map.set(ur.roleId, {
+        roleId: ur.roleId,
+        position: ur.position ?? "",
+        termFrom: ur.termFrom ? String(ur.termFrom) : "",
+        termTo: ur.termTo ? String(ur.termTo) : "",
+        displayOrder: ur.displayOrder != null ? String(ur.displayOrder) : "",
+      });
+    });
+    setRoleAssignments(map);
     setError("");
     setSuccess("");
     setModalOpen(true);
   }
 
-  function handleRoleCheckboxChange(roleId: string, checked: boolean) {
-    if (checked) {
-      setSelectedRoleIds((prev) => [...prev, roleId]);
-    } else {
-      setSelectedRoleIds((prev) => prev.filter((id) => id !== roleId));
-    }
-  }
+  // ── Form submit ────────────────────────────────────────────────────────────────
 
   async function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -252,11 +337,10 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
     startTransition(async () => {
       try {
         if (editingUser) {
-          // Edit mode
           const res = await updateUserAction(editingUser.id, {
             name: formName,
             email: formEmail,
-            roleIds: selectedRoleIds,
+            roleAssignments: assignmentsToPayload(),
           });
           if (res.success) {
             setSuccess("Member details updated successfully.");
@@ -266,11 +350,10 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
             }, 1000);
           }
         } else {
-          // Create mode
           const res = await createUserAction({
             name: formName,
             email: formEmail,
-            roleIds: selectedRoleIds,
+            roleAssignments: assignmentsToPayload(),
             password: formPassword,
           });
           if (res.success) {
@@ -303,6 +386,8 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
       }
     });
   }
+
+  // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
     <div>
@@ -382,15 +467,25 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
                       {user.email}
                     </td>
                     <td style={{ padding: "1rem" }}>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem" }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.375rem" }}>
                         {user.userRoles.length === 0 ? (
                           <span style={{ fontSize: "0.75rem", color: "var(--color-text-dim)" }}>No Roles</span>
                         ) : (
-                          user.userRoles.map((ur) => (
-                            <span key={ur.roleId} className={`badge ${ur.role.isActive ? "badge-cosmic" : "badge-danger"}`} style={{ fontSize: "0.65rem" }}>
-                              {ur.role.name}
-                            </span>
-                          ))
+                          user.userRoles.map((ur) => {
+                            const { primary, secondary } = roleBadgeLabel(ur);
+                            return (
+                              <div
+                                key={ur.roleId}
+                                className={`badge ${ur.role.isActive ? "badge-cosmic" : "badge-danger"}`}
+                                style={{ fontSize: "0.65rem", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "1px", padding: "0.25rem 0.5rem" }}
+                              >
+                                <span style={{ fontWeight: 700 }}>{primary}</span>
+                                {secondary && (
+                                  <span style={{ opacity: 0.75, fontWeight: 400, fontSize: "0.6rem" }}>{secondary}</span>
+                                )}
+                              </div>
+                            );
+                          })
                         )}
                       </div>
                     </td>
@@ -420,9 +515,9 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
         <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
           {/* Backdrop */}
           <div onClick={() => !isPending && setModalOpen(false)} style={{ position: "absolute", inset: 0, background: "rgba(3, 7, 18, 0.8)", backdropFilter: "blur(4px)" }} />
-          
+
           {/* Content */}
-          <div className="card" style={{ width: "100%", maxWidth: "500px", position: "relative", zIndex: 1, boxShadow: "var(--glow-cosmic)" }}>
+          <div className="card" style={{ width: "100%", maxWidth: "560px", position: "relative", zIndex: 1, boxShadow: "var(--glow-cosmic)", maxHeight: "90vh", overflowY: "auto" }}>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.25rem", fontWeight: 800, marginBottom: "1.5rem" }}>
               {editingUser ? "⚙️ Modify Operational Account" : "🚀 Establish Operational Account"}
             </h2>
@@ -472,21 +567,104 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
                 </div>
               )}
 
-              {/* Roles Checkboxes */}
+              {/* Role Assignments */}
               <div className="form-group">
-                <label className="form-label">Authorize Security Clearance Roles</label>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "150px", overflowY: "auto", padding: "0.5rem", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", background: "rgba(0,0,0,0.2)" }}>
-                  {roles.map((role) => (
-                    <label key={role.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem", cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={selectedRoleIds.includes(role.id)}
-                        onChange={(e) => handleRoleCheckboxChange(role.id, e.target.checked)}
-                        disabled={isPending}
-                      />
-                      <span>{role.name}</span>
-                    </label>
-                  ))}
+                <label className="form-label">Roles &amp; Positions</label>
+                <p style={{ fontSize: "0.75rem", color: "var(--color-text-dim)", marginBottom: "0.75rem" }}>
+                  Check a role to assign it, then optionally specify the exact position and term years.
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  {roles.map((role) => {
+                    const isChecked = roleAssignments.has(role.id);
+                    const assignment = roleAssignments.get(role.id);
+                    return (
+                      <div
+                        key={role.id}
+                        style={{
+                          border: `1px solid ${isChecked ? "var(--color-primary, #6366f1)" : "var(--color-border)"}`,
+                          borderRadius: "var(--radius-md)",
+                          padding: "0.625rem 0.75rem",
+                          background: isChecked ? "rgba(99,102,241,0.07)" : "rgba(0,0,0,0.15)",
+                          transition: "border-color 0.15s, background 0.15s",
+                        }}
+                      >
+                        {/* Role checkbox row */}
+                        <label style={{ display: "flex", alignItems: "center", gap: "0.625rem", cursor: "pointer", marginBottom: isChecked ? "0.75rem" : 0 }}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => toggleRole(role.id, e.target.checked)}
+                            disabled={isPending}
+                          />
+                          <span style={{ fontWeight: isChecked ? 700 : 400, fontSize: "0.875rem" }}>{role.name}</span>
+                        </label>
+
+                        {/* Expanded detail fields */}
+                        {isChecked && assignment && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", paddingLeft: "1.5rem" }}>
+                            {/* Position */}
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                              <span style={{ fontSize: "0.7rem", color: "var(--color-text-dim)", minWidth: "64px" }}>📌 Position</span>
+                              <input
+                                type="text"
+                                className="form-input"
+                                placeholder="e.g. President, Secretary, PM…"
+                                value={assignment.position}
+                                onChange={(e) => updateAssignment(role.id, "position", e.target.value)}
+                                disabled={isPending}
+                                style={{ fontSize: "0.8125rem", padding: "0.3rem 0.6rem", flex: 1 }}
+                              />
+                            </div>
+
+                            {/* Term years */}
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                              <span style={{ fontSize: "0.7rem", color: "var(--color-text-dim)", minWidth: "64px" }}>📅 Term</span>
+                              <select
+                                className="form-input"
+                                value={assignment.termFrom}
+                                onChange={(e) => updateAssignment(role.id, "termFrom", e.target.value)}
+                                disabled={isPending}
+                                style={{ fontSize: "0.8125rem", padding: "0.3rem 0.5rem", flex: 1 }}
+                              >
+                                <option value="">From year</option>
+                                {YEARS.map((y) => (
+                                  <option key={y} value={y}>{y}</option>
+                                ))}
+                              </select>
+                              <span style={{ fontSize: "0.75rem", color: "var(--color-text-dim)" }}>→</span>
+                              <select
+                                className="form-input"
+                                value={assignment.termTo}
+                                onChange={(e) => updateAssignment(role.id, "termTo", e.target.value)}
+                                disabled={isPending}
+                                style={{ fontSize: "0.8125rem", padding: "0.3rem 0.5rem", flex: 1 }}
+                              >
+                                <option value="">To year</option>
+                                {YEARS.map((y) => (
+                                  <option key={y} value={y}>{y}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Display Order */}
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                              <span style={{ fontSize: "0.7rem", color: "var(--color-text-dim)", minWidth: "64px" }}>🔢 Order</span>
+                              <input
+                                type="number"
+                                className="form-input"
+                                placeholder="e.g. 1 (lower = appears first on /team)"
+                                value={assignment.displayOrder}
+                                onChange={(e) => updateAssignment(role.id, "displayOrder", e.target.value)}
+                                disabled={isPending}
+                                min="1"
+                                style={{ fontSize: "0.8125rem", padding: "0.3rem 0.6rem", flex: 1 }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -521,7 +699,7 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
         <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
           {/* Backdrop */}
           <div onClick={() => !bulkImportProgress && setBulkModalOpen(false)} style={{ position: "absolute", inset: 0, background: "rgba(3, 7, 18, 0.8)", backdropFilter: "blur(4px)" }} />
-          
+
           {/* Content */}
           <div className="card" style={{ width: "100%", maxWidth: "800px", position: "relative", zIndex: 1, maxHeight: "90vh", overflowY: "auto", boxShadow: "var(--glow-cosmic)" }}>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.25rem", fontWeight: 800, marginBottom: "1.5rem" }}>
@@ -535,6 +713,9 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
                   <p style={{ fontSize: "0.875rem", color: "var(--color-text-muted)" }}>
                     Successfully created <strong>{bulkImportResult.createdCount}</strong> new space explorer accounts.
                     {bulkImportResult.skippedCount > 0 && ` Skipped ${bulkImportResult.skippedCount} accounts (either invalid or email signatures already registered).`}
+                  </p>
+                  <p style={{ fontSize: "0.8rem", color: "var(--color-text-dim)", marginTop: "0.5rem" }}>
+                    💡 Position &amp; term were not set via bulk import — edit each member individually to add those details.
                   </p>
                 </div>
 
@@ -571,11 +752,11 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
                     <div style={{ fontSize: "1.5rem", fontWeight: 800 }}>{bulkUsers.length}</div>
                   </div>
                   <div style={{ flex: 1, minWidth: "120px", padding: "0.75rem", background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "var(--radius-md)", textAlign: "center" }}>
-                    <div style={{ fontSize: "0.75rem", color: "#6ee7b7" }}>VALID & READY</div>
+                    <div style={{ fontSize: "0.75rem", color: "#6ee7b7" }}>VALID &amp; READY</div>
                     <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#6ee7b7" }}>{bulkUsers.filter(u => u.isValid).length}</div>
                   </div>
                   <div style={{ flex: 1, minWidth: "120px", padding: "0.75rem", background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "var(--radius-md)", textAlign: "center" }}>
-                    <div style={{ fontSize: "0.75rem", color: "#fca5a5" }}>INVALID & SKIPPED</div>
+                    <div style={{ fontSize: "0.75rem", color: "#fca5a5" }}>INVALID &amp; SKIPPED</div>
                     <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#fca5a5" }}>{bulkUsers.filter(u => !u.isValid).length}</div>
                   </div>
                 </div>

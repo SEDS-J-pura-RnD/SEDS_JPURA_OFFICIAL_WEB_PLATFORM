@@ -43,7 +43,7 @@ async function hashPassword(password: string): Promise<string> {
 export async function createUserAction(data: {
   name: string;
   email: string;
-  roleIds: string[];
+  roleAssignments: { roleId: string; position?: string; termFrom?: number; termTo?: number; displayOrder?: number }[];
   password?: string;
 }) {
   const session = await checkPermissionClearance(PERMISSIONS.CREATE_USER);
@@ -58,12 +58,16 @@ export async function createUserAction(data: {
     },
   });
 
-  // Assign roles
-  if (data.roleIds && data.roleIds.length > 0) {
+  // Assign roles with position and term
+  if (data.roleAssignments && data.roleAssignments.length > 0) {
     await prisma.userRole.createMany({
-      data: data.roleIds.map((roleId) => ({
+      data: data.roleAssignments.map(({ roleId, position, termFrom, termTo, displayOrder }) => ({
         userId: newUser.id,
         roleId,
+        position: position?.trim() || null,
+        termFrom: termFrom ?? null,
+        termTo: termTo ?? null,
+        displayOrder: displayOrder ?? null,
       })),
     });
   }
@@ -87,7 +91,7 @@ export async function createUserAction(data: {
     action: "USER_CREATED",
     entity: "User",
     entityId: newUser.id,
-    newState: { name: newUser.name, email: newUser.email, roles: data.roleIds },
+    newState: { name: newUser.name, email: newUser.email, roleAssignments: data.roleAssignments },
     ipAddress: ip,
   });
 
@@ -100,7 +104,7 @@ export async function updateUserAction(
   data: {
     name: string;
     email: string;
-    roleIds: string[];
+    roleAssignments: { roleId: string; position?: string; termFrom?: number; termTo?: number; displayOrder?: number }[];
   }
 ) {
   const session = await checkPermissionClearance(PERMISSIONS.EDIT_USER);
@@ -122,13 +126,17 @@ export async function updateUserAction(
     },
   });
 
-  // Dynamic role assignment via a transaction
+  // Dynamic role assignment with position and term via a transaction
   await prisma.$transaction([
     prisma.userRole.deleteMany({ where: { userId: targetUserId } }),
     prisma.userRole.createMany({
-      data: data.roleIds.map((roleId) => ({
+      data: data.roleAssignments.map(({ roleId, position, termFrom, termTo, displayOrder }) => ({
         userId: targetUserId,
         roleId,
+        position: position?.trim() || null,
+        termFrom: termFrom ?? null,
+        termTo: termTo ?? null,
+        displayOrder: displayOrder ?? null,
       })),
     }),
   ]);
@@ -139,7 +147,7 @@ export async function updateUserAction(
     entity: "User",
     entityId: targetUserId,
     prevState: { name: prevUser.name, email: prevUser.email, roles: prevUser.userRoles.map(ur => ur.roleId) },
-    newState: { name: updatedUser.name, email: updatedUser.email, roles: data.roleIds },
+    newState: { name: updatedUser.name, email: updatedUser.email, roleAssignments: data.roleAssignments },
     ipAddress: ip,
   });
 
@@ -183,6 +191,8 @@ export async function deleteUserAction(targetUserId: string) {
 export async function createRoleAction(data: {
   name: string;
   description: string;
+  showOnTeam?: boolean;
+  teamTitle?: string;
 }) {
   const session = await checkPermissionClearance(PERMISSIONS.MANAGE_ROLES);
   const ip = await getClientIP();
@@ -192,6 +202,8 @@ export async function createRoleAction(data: {
       name: data.name,
       description: data.description,
       isActive: true,
+      showOnTeam: data.showOnTeam ?? false,
+      teamTitle: data.teamTitle?.trim() || null,
     },
   });
 
@@ -205,6 +217,7 @@ export async function createRoleAction(data: {
   });
 
   revalidatePath("/admin/roles");
+  revalidatePath("/team");
   return { success: true, roleId: newRole.id };
 }
 
@@ -214,6 +227,8 @@ export async function updateRoleAction(
     name: string;
     description: string;
     isActive: boolean;
+    showOnTeam?: boolean;
+    teamTitle?: string;
   }
 ) {
   const session = await checkPermissionClearance(PERMISSIONS.MANAGE_ROLES);
@@ -228,6 +243,8 @@ export async function updateRoleAction(
       name: data.name,
       description: data.description,
       isActive: data.isActive,
+      showOnTeam: data.showOnTeam ?? false,
+      teamTitle: data.teamTitle?.trim() || null,
     },
   });
 
@@ -242,6 +259,7 @@ export async function updateRoleAction(
   });
 
   revalidatePath("/admin/roles");
+  revalidatePath("/team");
   return { success: true };
 }
 

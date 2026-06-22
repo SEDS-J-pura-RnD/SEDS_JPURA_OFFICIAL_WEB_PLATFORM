@@ -30,8 +30,10 @@ const navGroups: NavGroup[] = [
       { href: "/admin/users", label: "Users", icon: "👥", permission: "VIEW_USERS" },
       { href: "/admin/roles", label: "Roles", icon: "🎭", permission: "MANAGE_ROLES" },
       { href: "/admin/permissions", label: "Permissions", icon: "🔑", permission: "MANAGE_PERMISSIONS" },
+      { href: "/team", label: "Team Page Preview", icon: "🌐", permission: "VIEW_USERS" },
     ],
   },
+
   {
     label: "Content",
     items: [

@@ -9,12 +9,14 @@ import { useSession, signOut } from "@/lib/auth-client";
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About" },
+  { href: "/team", label: "Team" },
   { href: "/projects", label: "Projects" },
   { href: "/news", label: "News" },
   { href: "/events", label: "Events" },
   { href: "/sponsors", label: "Sponsors" },
   { href: "/contact", label: "Contact" },
 ];
+
 
 export default function Navbar() {
   const pathname = usePathname();

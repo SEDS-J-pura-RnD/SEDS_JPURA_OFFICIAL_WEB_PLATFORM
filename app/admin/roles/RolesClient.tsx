@@ -17,6 +17,8 @@ interface Role {
   name: string;
   description: string | null;
   isActive: boolean;
+  showOnTeam: boolean;
+  teamTitle: string | null;
   rolePermissions: RolePermission[];
   userRoles: Array<{ userId: string }>;
 }
@@ -37,6 +39,8 @@ export default function RolesClient({ initialRoles }: RolesClientProps) {
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formIsActive, setFormIsActive] = useState(true);
+  const [formShowOnTeam, setFormShowOnTeam] = useState(false);
+  const [formTeamTitle, setFormTeamTitle] = useState("");
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -46,6 +50,8 @@ export default function RolesClient({ initialRoles }: RolesClientProps) {
     setFormName("");
     setFormDescription("");
     setFormIsActive(true);
+    setFormShowOnTeam(false);
+    setFormTeamTitle("");
     setError("");
     setSuccess("");
     setModalOpen(true);
@@ -56,6 +62,8 @@ export default function RolesClient({ initialRoles }: RolesClientProps) {
     setFormName(role.name);
     setFormDescription(role.description || "");
     setFormIsActive(role.isActive);
+    setFormShowOnTeam(role.showOnTeam);
+    setFormTeamTitle(role.teamTitle || "");
     setError("");
     setSuccess("");
     setModalOpen(true);
@@ -78,6 +86,8 @@ export default function RolesClient({ initialRoles }: RolesClientProps) {
             name: formName,
             description: formDescription,
             isActive: formIsActive,
+            showOnTeam: formShowOnTeam,
+            teamTitle: formTeamTitle,
           });
           if (res.success) {
             setSuccess("Role configuration updated successfully.");
@@ -90,6 +100,8 @@ export default function RolesClient({ initialRoles }: RolesClientProps) {
           const res = await createRoleAction({
             name: formName,
             description: formDescription,
+            showOnTeam: formShowOnTeam,
+            teamTitle: formTeamTitle,
           });
           if (res.success) {
             setSuccess("Role initialized successfully.");
@@ -164,9 +176,21 @@ export default function RolesClient({ initialRoles }: RolesClientProps) {
                 </span>
               </div>
 
-              <div style={{ display: "flex", gap: "1.5rem", marginBottom: "1rem", fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>
+              <div style={{ display: "flex", gap: "1.5rem", marginBottom: "0.5rem", fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>
                 <span>👥 {role.userRoles.length} member(s)</span>
                 <span>🔑 {role.rolePermissions.length} permission(s)</span>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "1rem", fontSize: "0.8125rem" }}>
+                {role.showOnTeam ? (
+                  <span style={{ color: "#38bdf8", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                    <span>🌐</span> Visible on Team as <strong>&quot;{role.teamTitle || role.name}&quot;</strong>
+                  </span>
+                ) : (
+                  <span style={{ color: "var(--color-text-dim)", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                    <span>🔒</span> Hidden on Team page
+                  </span>
+                )}
               </div>
 
               {/* Permissions list */}
@@ -255,6 +279,42 @@ export default function RolesClient({ initialRoles }: RolesClientProps) {
                   <span>Role is active for assignment</span>
                 </label>
               )}
+
+              {/* Team page settings */}
+              <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: "1rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <h4 style={{ fontFamily: "var(--font-display)", fontSize: "0.9rem", fontWeight: 700, margin: 0, color: "var(--color-text)" }}>🌐 Team Page Display Settings</h4>
+                
+                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={formShowOnTeam}
+                    onChange={(e) => setFormShowOnTeam(e.target.checked)}
+                    disabled={isPending}
+                  />
+                  <span>Display this role category on the public team page</span>
+                </label>
+
+                {formShowOnTeam && (
+                  <div className="form-group" style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+                    <label className="form-label" htmlFor="team-title" style={{ fontSize: "0.8125rem", margin: 0 }}>
+                      Team Page Category Title (Override)
+                    </label>
+                    <input
+                      id="team-title"
+                      type="text"
+                      className="form-input"
+                      placeholder={`e.g. Executive Committee (Defaults to: "${formName || "Role Name"}")`}
+                      value={formTeamTitle}
+                      onChange={(e) => setFormTeamTitle(e.target.value)}
+                      disabled={isPending}
+                      style={{ fontSize: "0.875rem" }}
+                    />
+                    <span style={{ fontSize: "0.75rem", color: "var(--color-text-dim)" }}>
+                      Leave blank to use the role name.
+                    </span>
+                  </div>
+                )}
+              </div>
 
               {error && (
                 <div style={{ padding: "0.75rem", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "var(--radius-md)", color: "#fca5a5", fontSize: "0.8125rem" }}>

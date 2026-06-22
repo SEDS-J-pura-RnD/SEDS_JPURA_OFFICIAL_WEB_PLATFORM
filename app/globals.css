@@ -2154,5 +2154,14 @@ h1, h2, h3, h4, h5, h6 {
 .delay-400 { animation-delay: 400ms; }
 .delay-500 { animation-delay: 500ms; }
 
+/* ─────────────────────────────────────────────
+   TEAM PAGE
+   ───────────────────────────────────────────── */
+.team-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+
 
 

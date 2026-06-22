@@ -92,6 +92,8 @@ model Role {
   name            String           @unique
   description     String?
   isActive        Boolean          @default(true)
+  showOnTeam      Boolean          @default(false)
+  teamTitle       String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   rolePermissions RolePermission[]
@@ -113,11 +115,15 @@ model Permission {
 }
 
 model UserRole {
-  userId     String   @db.Uuid
-  roleId     String
-  assignedAt DateTime @default(now())
-  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String   @db.Uuid
+  roleId       String
+  position     String?  // Specific title within the role, e.g. "President", "Secretary"
+  termFrom     Int?     // Start year of term, e.g. 2024
+  termTo       Int?     // End year of term, e.g. 2025
+  displayOrder Int?     // Controls position ordering on the public /team page (lower = first)
+  assignedAt   DateTime @default(now())
+  role         Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, roleId])
   @@map("user_roles")
