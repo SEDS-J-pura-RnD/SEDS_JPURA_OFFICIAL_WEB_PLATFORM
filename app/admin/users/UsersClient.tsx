@@ -685,8 +685,16 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
                 <button type="button" onClick={() => setModalOpen(false)} className="btn btn-ghost" disabled={isPending}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={isPending}>
-                  {isPending ? "Syncing core..." : editingUser ? "Save Changes" : "Create Member"}
+                <button type="submit" className="btn btn-primary" disabled={isPending} style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem" }}>
+                  {isPending ? (
+                    <>
+                      <span className="spinner" style={{ width: 14, height: 14 }} /> Syncing core...
+                    </>
+                  ) : editingUser ? (
+                    "Save Changes"
+                  ) : (
+                    "Create Member"
+                  )}
                 </button>
               </div>
             </form>
