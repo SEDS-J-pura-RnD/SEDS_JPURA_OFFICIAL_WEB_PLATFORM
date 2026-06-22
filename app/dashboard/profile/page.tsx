@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "@/lib/auth-client";
 import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
+import ImageUpload from "@/components/admin/ImageUpload";
+import { checkTeamPrivilegeAction, updateProfileImageAction } from "@/lib/actions/profile";
 
 export default function ProfilePage() {
   const { data: session, isPending } = useSession();
@@ -15,6 +17,41 @@ export default function ProfilePage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Profile image upload state
+  const [isPrivileged, setIsPrivileged] = useState<boolean | null>(null);
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageUploadError, setImageUploadError] = useState("");
+  const [imageUploadSuccess, setImageUploadSuccess] = useState("");
+  const [updatingImage, setUpdatingImage] = useState(false);
+
+  useEffect(() => {
+    if (session) {
+      checkTeamPrivilegeAction().then((res) => {
+        setIsPrivileged(res);
+        setImageUrl(session.user.image || "");
+      });
+    }
+  }, [session]);
+
+  async function handleImageChange(url: string) {
+    setImageUploadError("");
+    setImageUploadSuccess("");
+    setUpdatingImage(true);
+    try {
+      const res = await updateProfileImageAction(url);
+      if (res.success) {
+        setImageUrl(url);
+        setImageUploadSuccess(url ? "Avatar updated successfully!" : "Avatar removed successfully!");
+        // Refresh local session client state
+        await authClient.getSession();
+      }
+    } catch (err: any) {
+      setImageUploadError(err.message || "Failed to update profile image.");
+    } finally {
+      setUpdatingImage(false);
+    }
+  }
 
   async function handlePasswordChange(e: React.FormEvent) {
     e.preventDefault();
@@ -117,6 +154,52 @@ export default function ProfilePage() {
                 Commissioned on: {new Date(session.user.createdAt).toLocaleDateString()}
               </div>
             </div>
+          </div>
+
+          {/* Avatar Upload Section */}
+          <div style={{ marginTop: "2rem", borderTop: "1px solid var(--color-border)", paddingTop: "1.5rem" }}>
+            {isPrivileged === null ? (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <div style={{
+                  width: "16px",
+                  height: "16px",
+                  border: "2px solid rgba(255,255,255,0.1)",
+                  borderTop: "2px solid var(--color-stellar)",
+                  borderRadius: "50%",
+                  animation: "upload-spin 1s linear infinite"
+                }} />
+                <span style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>Checking team page permissions...</span>
+              </div>
+            ) : isPrivileged ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                <ImageUpload
+                  label="Orbit Avatar Image"
+                  value={imageUrl}
+                  onChange={handleImageChange}
+                  disabled={updatingImage}
+                />
+                {imageUploadError && (
+                  <div style={{ padding: "0.5rem 0.75rem", background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: "var(--radius-sm)", color: "#fca5a5", fontSize: "0.725rem" }}>
+                    ⚠️ {imageUploadError}
+                  </div>
+                )}
+                {imageUploadSuccess && (
+                  <div style={{ padding: "0.5rem 0.75rem", background: "rgba(16, 185, 129, 0.1)", border: "1px solid rgba(16, 185, 129, 0.3)", borderRadius: "var(--radius-sm)", color: "#6ee7b7", fontSize: "0.725rem" }}>
+                    ✔️ {imageUploadSuccess}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: "0.75rem", padding: "1rem", background: "rgba(56, 189, 248, 0.04)", border: "1px solid rgba(56, 189, 248, 0.12)", borderRadius: "var(--radius-md)", alignItems: "flex-start" }}>
+                <span style={{ fontSize: "1.25rem", marginTop: "-0.1rem" }}>🔒</span>
+                <div>
+                  <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-stellar)" }}>Standard Explorer Profile</div>
+                  <p style={{ fontSize: "0.75rem", color: "var(--color-text-dim)", marginTop: "0.25rem", lineHeight: 1.5 }}>
+                    Custom avatar uploads are reserved for active team leaders and members listed on the public <Link href="/team" className="text-link" style={{ textDecoration: "underline", color: "var(--color-stellar)" }}>Team page</Link>.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

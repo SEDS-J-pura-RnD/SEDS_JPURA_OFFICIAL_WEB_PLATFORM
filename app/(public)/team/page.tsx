@@ -322,18 +322,6 @@ export default async function TeamPage() {
                               </div>
                             )}
 
-                            {/* Term */}
-                            {(m.termFrom || m.termTo) && (
-                              <div
-                                style={{
-                                  fontSize: "0.7rem",
-                                  color: "var(--color-text-dim)",
-                                  marginTop: "0.35rem",
-                                }}
-                              >
-                                📅 {m.termFrom ?? "?"} – {m.termTo ?? "present"}
-                              </div>
-                            )}
                           </div>
                         </div>
                       ))}
