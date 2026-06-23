@@ -197,6 +197,8 @@ export default function ProjectsClient({
               setModalOpen(false);
               router.refresh();
             }, 1000);
+          } else {
+            setError((res as { error?: string }).error || "Operation failed.");
           }
         } else {
           const res = await createProjectAction(data);
@@ -206,10 +208,12 @@ export default function ProjectsClient({
               setModalOpen(false);
               router.refresh();
             }, 1000);
+          } else {
+            setError((res as { error?: string }).error || "Operation failed.");
           }
         }
-      } catch (err: any) {
-        setError(err.message || "Operation failed.");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Operation failed.");
       }
     });
   }
@@ -224,9 +228,11 @@ export default function ProjectsClient({
         const res = await deleteProjectAction(projectId);
         if (res.success) {
           router.refresh();
+        } else {
+          alert((res as { error?: string }).error || "Failed to delete project.");
         }
-      } catch (err: any) {
-        alert(err.message || "Failed to delete project.");
+      } catch (err: unknown) {
+        alert(err instanceof Error ? err.message : "Failed to delete project.");
       }
     });
   }
@@ -249,9 +255,11 @@ export default function ProjectsClient({
           // Find updated project and update local modal state
           const updatedProj = initialProjects.find(p => p.id === selectedProjectForMembers.id);
           if (updatedProj) setSelectedProjectForMembers(updatedProj);
+        } else {
+          setMemberError((res as { error?: string }).error || "Failed to assign member.");
         }
-      } catch (err: any) {
-        setMemberError(err.message || "Failed to assign member.");
+      } catch (err: unknown) {
+        setMemberError(err instanceof Error ? err.message : "Failed to assign member.");
       }
     });
   }
@@ -266,9 +274,11 @@ export default function ProjectsClient({
           router.refresh();
           const updatedProj = initialProjects.find(p => p.id === selectedProjectForMembers.id);
           if (updatedProj) setSelectedProjectForMembers(updatedProj);
+        } else {
+          setMemberError((res as { error?: string }).error || "Failed to remove member.");
         }
-      } catch (err: any) {
-        setMemberError(err.message || "Failed to remove member.");
+      } catch (err: unknown) {
+        setMemberError(err instanceof Error ? err.message : "Failed to remove member.");
       }
     });
   }

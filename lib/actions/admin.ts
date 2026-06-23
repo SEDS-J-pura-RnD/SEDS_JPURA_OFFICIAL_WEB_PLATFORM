@@ -493,36 +493,42 @@ export async function createProjectAction(data: {
   sponsorIds?: string[];
   collaboratorIds?: string[];
 }) {
-  const session = await checkPermissionClearance(PERMISSIONS.CREATE_PROJECT);
-  const ip = await getClientIP();
+  try {
+    const session = await checkPermissionClearance(PERMISSIONS.CREATE_PROJECT);
+    const ip = await getClientIP();
 
-  const { sponsorIds, collaboratorIds, ...rest } = data;
+    const { sponsorIds, collaboratorIds, ...rest } = data;
 
-  const project = await prisma.project.create({
-    data: {
-      ...rest,
-      sponsors: sponsorIds && sponsorIds.length > 0 ? {
-        connect: sponsorIds.map((id) => ({ id })),
-      } : undefined,
-      collaborators: collaboratorIds && collaboratorIds.length > 0 ? {
-        connect: collaboratorIds.map((id) => ({ id })),
-      } : undefined,
-    },
-  });
+    const project = await prisma.project.create({
+      data: {
+        ...rest,
+        sponsors: sponsorIds && sponsorIds.length > 0 ? {
+          connect: sponsorIds.map((id) => ({ id })),
+        } : undefined,
+        collaborators: collaboratorIds && collaboratorIds.length > 0 ? {
+          connect: collaboratorIds.map((id) => ({ id })),
+        } : undefined,
+      },
+    });
 
-  await logAudit({
-    userId: session.user.id,
-    action: "PROJECT_CREATED",
-    entity: "Project",
-    entityId: project.id,
-    newState: project,
-    ipAddress: ip,
-  });
+    await logAudit({
+      userId: session.user.id,
+      action: "PROJECT_CREATED",
+      entity: "Project",
+      entityId: project.id,
+      newState: project,
+      ipAddress: ip,
+    });
 
-  revalidatePath("/admin/projects");
-  revalidatePath("/projects");
-  revalidatePath("/dashboard");
-  return { success: true, projectId: project.id };
+    revalidatePath("/admin/projects");
+    revalidatePath("/projects");
+    revalidatePath("/dashboard");
+    return { success: true, projectId: project.id };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "An unexpected error occurred.";
+    console.error("[createProjectAction] Error establishing project:", err);
+    return { success: false, error: errorMsg };
+  }
 }
 
 export async function updateProjectAction(
@@ -542,66 +548,78 @@ export async function updateProjectAction(
     collaboratorIds?: string[];
   }
 ) {
-  const session = await checkPermissionClearance(PERMISSIONS.EDIT_PROJECT);
-  const ip = await getClientIP();
+  try {
+    const session = await checkPermissionClearance(PERMISSIONS.EDIT_PROJECT);
+    const ip = await getClientIP();
 
-  const prevProject = await prisma.project.findUnique({ where: { id: projectId } });
-  if (!prevProject) throw new Error("Project record not found.");
+    const prevProject = await prisma.project.findUnique({ where: { id: projectId } });
+    if (!prevProject) throw new Error("Project record not found.");
 
-  const { sponsorIds, collaboratorIds, ...rest } = data;
+    const { sponsorIds, collaboratorIds, ...rest } = data;
 
-  const updated = await prisma.project.update({
-    where: { id: projectId },
-    data: {
-      ...rest,
-      sponsors: {
-        set: sponsorIds ? sponsorIds.map((id) => ({ id })) : [],
+    const updated = await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        ...rest,
+        sponsors: {
+          set: sponsorIds ? sponsorIds.map((id) => ({ id })) : [],
+        },
+        collaborators: {
+          set: collaboratorIds ? collaboratorIds.map((id) => ({ id })) : [],
+        },
       },
-      collaborators: {
-        set: collaboratorIds ? collaboratorIds.map((id) => ({ id })) : [],
-      },
-    },
-  });
+    });
 
-  await logAudit({
-    userId: session.user.id,
-    action: "PROJECT_UPDATED",
-    entity: "Project",
-    entityId: projectId,
-    prevState: prevProject,
-    newState: updated,
-    ipAddress: ip,
-  });
+    await logAudit({
+      userId: session.user.id,
+      action: "PROJECT_UPDATED",
+      entity: "Project",
+      entityId: projectId,
+      prevState: prevProject,
+      newState: updated,
+      ipAddress: ip,
+    });
 
-  revalidatePath("/admin/projects");
-  revalidatePath("/projects");
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/dashboard");
-  return { success: true };
+    revalidatePath("/admin/projects");
+    revalidatePath("/projects");
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "An unexpected error occurred.";
+    console.error("[updateProjectAction] Error updating project:", err);
+    return { success: false, error: errorMsg };
+  }
 }
 
 export async function deleteProjectAction(projectId: string) {
-  const session = await checkPermissionClearance(PERMISSIONS.DELETE_PROJECT);
-  const ip = await getClientIP();
+  try {
+    const session = await checkPermissionClearance(PERMISSIONS.DELETE_PROJECT);
+    const ip = await getClientIP();
 
-  const prev = await prisma.project.findUnique({ where: { id: projectId } });
-  if (!prev) throw new Error("Project record not found.");
+    const prev = await prisma.project.findUnique({ where: { id: projectId } });
+    if (!prev) throw new Error("Project record not found.");
 
-  await prisma.project.delete({ where: { id: projectId } });
+    await prisma.project.delete({ where: { id: projectId } });
 
-  await logAudit({
-    userId: session.user.id,
-    action: "PROJECT_DELETED",
-    entity: "Project",
-    entityId: projectId,
-    prevState: prev,
-    ipAddress: ip,
-  });
+    await logAudit({
+      userId: session.user.id,
+      action: "PROJECT_DELETED",
+      entity: "Project",
+      entityId: projectId,
+      prevState: prev,
+      ipAddress: ip,
+    });
 
-  revalidatePath("/admin/projects");
-  revalidatePath("/projects");
-  revalidatePath("/dashboard");
-  return { success: true };
+    revalidatePath("/admin/projects");
+    revalidatePath("/projects");
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "An unexpected error occurred.";
+    console.error("[deleteProjectAction] Error deleting project:", err);
+    return { success: false, error: errorMsg };
+  }
 }
 
 export async function assignProjectMemberAction(
@@ -609,55 +627,66 @@ export async function assignProjectMemberAction(
   userId: string,
   projectRole: "LEAD" | "MEMBER"
 ) {
-  const session = await checkPermissionClearance(PERMISSIONS.ASSIGN_PROJECT_MEMBER);
-  const ip = await getClientIP();
+  try {
+    const session = await checkPermissionClearance(PERMISSIONS.ASSIGN_PROJECT_MEMBER);
+    const ip = await getClientIP();
 
-  await prisma.projectMember.upsert({
-    where: {
-      projectId_userId: { projectId, userId },
-    },
-    update: { projectRole },
-    create: { projectId, userId, projectRole },
-  });
+    await prisma.projectMember.upsert({
+      where: {
+        projectId_userId: { projectId, userId },
+      },
+      update: { projectRole },
+      create: { projectId, userId, projectRole },
+    });
 
-  await logAudit({
-    userId: session.user.id,
-    action: "PROJECT_MEMBER_ADDED",
-    entity: "ProjectMember",
-    entityId: `${projectId}_${userId}`,
-    newState: { projectId, userId, role: projectRole },
-    ipAddress: ip,
-  });
+    await logAudit({
+      userId: session.user.id,
+      action: "PROJECT_MEMBER_ADDED",
+      entity: "ProjectMember",
+      entityId: `${projectId}_${userId}`,
+      newState: { projectId, userId, role: projectRole },
+      ipAddress: ip,
+    });
 
-  revalidatePath("/admin/projects");
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/dashboard");
-  return { success: true };
+    revalidatePath("/admin/projects");
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "An unexpected error occurred.";
+    console.error("[assignProjectMemberAction] Error assigning project member:", err);
+    return { success: false, error: errorMsg };
+  }
 }
 
 export async function removeProjectMemberAction(projectId: string, userId: string) {
-  const session = await checkPermissionClearance(PERMISSIONS.ASSIGN_PROJECT_MEMBER);
-  const ip = await getClientIP();
+  try {
+    const session = await checkPermissionClearance(PERMISSIONS.ASSIGN_PROJECT_MEMBER);
+    const ip = await getClientIP();
 
-  await prisma.projectMember.delete({
-    where: {
-      projectId_userId: { projectId, userId },
-    },
-  });
+    await prisma.projectMember.delete({
+      where: {
+        projectId_userId: { projectId, userId },
+      },
+    });
 
-  await logAudit({
-    userId: session.user.id,
-    action: "PROJECT_MEMBER_REMOVED",
-    entity: "ProjectMember",
-    entityId: `${projectId}_${userId}`,
-    ipAddress: ip,
-  });
+    await logAudit({
+      userId: session.user.id,
+      action: "PROJECT_MEMBER_REMOVED",
+      entity: "ProjectMember",
+      entityId: `${projectId}_${userId}`,
+      ipAddress: ip,
+    });
 
-  revalidatePath("/admin/projects");
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/dashboard");
-  return { success: true };
-}
+    revalidatePath("/admin/projects");
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "An unexpected error occurred.";
+    console.error("[removeProjectMemberAction] Error removing project member:", err);
+    return { success: false, error: errorMsg };
+  }}
 
 // ─────────────────────────────────────────────
 // NEWS ACTIONS
