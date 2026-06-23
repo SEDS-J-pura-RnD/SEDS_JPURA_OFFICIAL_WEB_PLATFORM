@@ -596,33 +596,39 @@ export default function ProjectsClient({
                 <p style={{ fontSize: "0.8125rem", color: "var(--color-text-dim)", fontStyle: "italic" }}>No crew members assigned to this operation yet.</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  {selectedProjectForMembers.members.map((member) => (
-                    <div
-                      key={member.userId}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "0.5rem 0.75rem",
-                        background: "rgba(255,255,255,0.02)",
-                        border: "1px solid var(--color-border)",
-                        borderRadius: "var(--radius-md)"
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontSize: "0.875rem", fontWeight: 600 }}>{member.user.name}</div>
-                        <div style={{ fontSize: "0.7rem", color: "var(--color-text-dim)" }}>{member.user.email}</div>
+                  {[...selectedProjectForMembers.members]
+                    .sort((a, b) => {
+                      if (a.projectRole === "LEAD" && b.projectRole !== "LEAD") return -1;
+                      if (a.projectRole !== "LEAD" && b.projectRole === "LEAD") return 1;
+                      return 0;
+                    })
+                    .map((member) => (
+                      <div
+                        key={member.userId}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "0.5rem 0.75rem",
+                          background: "rgba(255,255,255,0.02)",
+                          border: "1px solid var(--color-border)",
+                          borderRadius: "var(--radius-md)"
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: "0.875rem", fontWeight: 600 }}>{member.user.name}</div>
+                          <div style={{ fontSize: "0.7rem", color: "var(--color-text-dim)" }}>{member.user.email}</div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                          <span className={`badge ${member.projectRole === "LEAD" ? "badge-nebula" : "badge-cosmic"}`} style={{ fontSize: "0.65rem" }}>
+                            {member.projectRole}
+                          </span>
+                          <button onClick={() => handleRemoveMember(member.userId)} className="btn btn-danger btn-sm" style={{ padding: "0.25rem 0.5rem" }} disabled={isPending}>
+                            Remove
+                          </button>
+                        </div>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                        <span className={`badge ${member.projectRole === "LEAD" ? "badge-nebula" : "badge-cosmic"}`} style={{ fontSize: "0.65rem" }}>
-                          {member.projectRole}
-                        </span>
-                        <button onClick={() => handleRemoveMember(member.userId)} className="btn btn-danger btn-sm" style={{ padding: "0.25rem 0.5rem" }} disabled={isPending}>
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               )}
             </div>

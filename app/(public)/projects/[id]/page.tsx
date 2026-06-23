@@ -145,22 +145,28 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 <p style={{ color: "var(--color-text-dim)", fontSize: "0.875rem" }}>No members assigned yet.</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                  {project.members.map((m) => (
-                    <div key={m.userId} style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                      <div style={{
-                        width: 36, height: 36, borderRadius: "50%",
-                        background: "var(--gradient-cosmic)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: "0.875rem", fontWeight: 700, flexShrink: 0,
-                      }}>
-                        {m.user.name[0]}
+                  {[...project.members]
+                    .sort((a, b) => {
+                      if (a.projectRole === "LEAD" && b.projectRole !== "LEAD") return -1;
+                      if (a.projectRole !== "LEAD" && b.projectRole === "LEAD") return 1;
+                      return 0;
+                    })
+                    .map((m) => (
+                      <div key={m.userId} style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                        <div style={{
+                          width: 36, height: 36, borderRadius: "50%",
+                          background: "var(--gradient-cosmic)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: "0.875rem", fontWeight: 700, flexShrink: 0,
+                        }}>
+                          {m.user.name[0]}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: "0.875rem" }}>{m.user.name}</div>
+                          <div style={{ fontSize: "0.75rem", color: "var(--color-text-dim)" }}>{m.projectRole}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: "0.875rem" }}>{m.user.name}</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--color-text-dim)" }}>{m.projectRole}</div>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               )}
             </div>
