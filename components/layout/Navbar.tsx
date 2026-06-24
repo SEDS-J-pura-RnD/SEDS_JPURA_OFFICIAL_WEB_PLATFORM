@@ -60,7 +60,7 @@ export default function Navbar() {
 
             {/* Auth Controls */}
             <div className="navbar-actions">
-              {session ? (
+              {session && (
                 <div className="navbar-user">
                   <Link href="/dashboard" className="btn btn-ghost btn-sm">
                     Dashboard
@@ -72,10 +72,6 @@ export default function Navbar() {
                     Sign Out
                   </button>
                 </div>
-              ) : (
-                <Link href="/auth/login" className="btn btn-primary btn-sm">
-                  <span>🚀</span> Sign In
-                </Link>
               )}
 
               {/* Mobile Hamburger */}
@@ -108,16 +104,12 @@ export default function Navbar() {
                   {link.label}
                 </Link>
               ))}
-              <div className="mobile-auth">
-                {session ? (
-                  <>
-                    <Link href="/dashboard" className="btn btn-ghost w-full" onClick={() => setMobileOpen(false)}>Dashboard</Link>
-                    <button onClick={() => { signOut(); setMobileOpen(false); }} className="btn btn-secondary w-full">Sign Out</button>
-                  </>
-                ) : (
-                  <Link href="/auth/login" className="btn btn-primary w-full" onClick={() => setMobileOpen(false)}>Sign In</Link>
-                )}
-              </div>
+              {session && (
+                <div className="mobile-auth">
+                  <Link href="/dashboard" className="btn btn-ghost w-full" onClick={() => setMobileOpen(false)}>Dashboard</Link>
+                  <button onClick={() => { signOut(); setMobileOpen(false); }} className="btn btn-secondary w-full">Sign Out</button>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -101,10 +101,10 @@ export default async function EventsPage() {
                       minWidth: "48px",
                     }}>
                       <div style={{ fontSize: "1.25rem", fontWeight: 800, fontFamily: "var(--font-display)", lineHeight: 1 }}>
-                        {new Date(event.startDate).getDate()}
+                        {new Date(event.startDate).toLocaleDateString("en-US", { day: "numeric", timeZone: "Asia/Colombo" })}
                       </div>
                       <div style={{ fontSize: "0.6rem", fontWeight: 600, letterSpacing: "0.05em" }}>
-                        {new Date(event.startDate).toLocaleDateString("en", { month: "short" }).toUpperCase()}
+                        {new Date(event.startDate).toLocaleDateString("en-US", { month: "short", timeZone: "Asia/Colombo" }).toUpperCase()}
                       </div>
                     </div>
                   </div>
@@ -146,7 +146,7 @@ export default async function EventsPage() {
                       <div className="badge badge-cosmic" style={{ marginBottom: "0.75rem", display: "inline-flex" }}>Completed</div>
                       <h3 style={{ fontFamily: "var(--font-display)", fontSize: "0.9375rem", fontWeight: 700, marginBottom: "0.5rem" }}>{event.title}</h3>
                       <div style={{ fontSize: "0.8125rem", color: "var(--color-text-dim)" }}>
-                        {new Date(event.startDate).toLocaleDateString("en-LK", { day: "numeric", month: "long", year: "numeric" })}
+                        {new Date(event.startDate).toLocaleDateString("en-LK", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Colombo" })}
                       </div>
                     </div>
                   </div>

@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { createEventAction, updateEventAction, deleteEventAction } from "@/lib/actions/admin";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ImageUpload from "@/components/admin/ImageUpload";
 
@@ -26,6 +25,41 @@ interface EventItem {
   maxCapacity: number | null;
   createdAt: Date;
   registrations: EventRegistration[];
+}
+
+function toColomboDateTimeString(date: Date): string {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "";
+  try {
+    const options = {
+      timeZone: "Asia/Colombo",
+      year: "numeric" as const,
+      month: "2-digit" as const,
+      day: "2-digit" as const,
+      hour: "2-digit" as const,
+      minute: "2-digit" as const,
+      hour12: false,
+    };
+    const formatter = new Intl.DateTimeFormat("en-US", options);
+    const parts = formatter.formatToParts(d);
+    const year = parts.find((p) => p.type === "year")?.value;
+    const month = parts.find((p) => p.type === "month")?.value;
+    const day = parts.find((p) => p.type === "day")?.value;
+    const hour = parts.find((p) => p.type === "hour")?.value;
+    const minute = parts.find((p) => p.type === "minute")?.value;
+    let normalizedHour = hour || "00";
+    if (normalizedHour === "24") {
+      normalizedHour = "00";
+    }
+    return `${year}-${month}-${day}T${normalizedHour}:${minute}`;
+  } catch (e) {
+    console.error("Error formatting Colombo date time string:", e);
+    return d.toISOString().slice(0, 16);
+  }
+}
+
+function parseDateInColomboTime(dateTimeStr: string): Date {
+  return new Date(dateTimeStr + "+05:30");
 }
 
 interface EventsClientProps {
@@ -85,8 +119,8 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
     setDescription(event.description);
     setLocation(event.location || "");
     setImageUrl(event.imageUrl || "");
-    setStartDateStr(new Date(event.startDate).toISOString().slice(0, 16));
-    setEndDateStr(event.endDate ? new Date(event.endDate).toISOString().slice(0, 16) : "");
+    setStartDateStr(toColomboDateTimeString(event.startDate));
+    setEndDateStr(event.endDate ? toColomboDateTimeString(event.endDate) : "");
     setMaxCapacityStr(event.maxCapacity ? String(event.maxCapacity) : "");
     setIsPublished(event.isPublished);
     setError("");
@@ -110,7 +144,7 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
         "Attendee Name": reg.name,
         "Attendee Email": reg.email,
         "Attendee Phone": reg.phone || "N/A",
-        "Registration Date": new Date(reg.createdAt).toLocaleString(),
+        "Registration Date": new Date(reg.createdAt).toLocaleString("en-LK", { timeZone: "Asia/Colombo" }),
       }));
 
       const ws = XLSX.utils.json_to_sheet(data);
@@ -122,8 +156,9 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
 
       const filename = `${selectedEventForRegs.title.replace(/[^a-z0-9]/gi, "_")}_Participation_List.xlsx`;
       XLSX.writeFile(wb, filename);
-    } catch (err: any) {
-      alert("Failed to export registrations: " + err.message);
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      alert("Failed to export registrations: " + errorMsg);
     }
   }
 
@@ -142,8 +177,8 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
       description,
       location: location || undefined,
       imageUrl: imageUrl || undefined,
-      startDate: new Date(startDateStr),
-      endDate: endDateStr ? new Date(endDateStr) : undefined,
+      startDate: parseDateInColomboTime(startDateStr),
+      endDate: endDateStr ? parseDateInColomboTime(endDateStr) : undefined,
       maxCapacity: maxCapacityStr ? parseInt(maxCapacityStr) : undefined,
       isPublished,
     };
@@ -169,8 +204,9 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
             }, 1000);
           }
         }
-      } catch (err: any) {
-        setError(err.message || "Operation failed.");
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : "Operation failed.";
+        setError(errorMsg);
       }
     });
   }
@@ -186,8 +222,9 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
         if (res.success) {
           router.refresh();
         }
-      } catch (err: any) {
-        alert(err.message || "Failed to remove event.");
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : "Failed to remove event.";
+        alert(errorMsg);
       }
     });
   }
@@ -242,7 +279,7 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
                       {event.title}
                     </h2>
                     <p style={{ fontSize: "0.75rem", color: "var(--color-text-dim)", marginTop: "0.25rem" }}>
-                      📍 {event.location || "Online"} · 📅 {new Date(event.startDate).toLocaleString()}
+                      📍 {event.location || "Online"} · 📅 {new Date(event.startDate).toLocaleString("en-LK", { timeZone: "Asia/Colombo" })}
                       {event.maxCapacity && ` · Capacity: ${event.registrations.length}/${event.maxCapacity}`}
                     </p>
                   </div>
@@ -454,7 +491,7 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
                       {reg.phone && <div style={{ fontSize: "0.7rem", color: "var(--color-text-muted)", marginTop: "0.25rem" }}>📞 {reg.phone}</div>}
                     </div>
                     <div style={{ fontSize: "0.7rem", color: "var(--color-text-dim)" }}>
-                      Registered: {new Date(reg.createdAt).toLocaleDateString()}
+                      Registered: {new Date(reg.createdAt).toLocaleDateString("en-LK", { timeZone: "Asia/Colombo" })}
                     </div>
                   </div>
                 ))

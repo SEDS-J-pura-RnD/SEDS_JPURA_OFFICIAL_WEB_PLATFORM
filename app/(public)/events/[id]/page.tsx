@@ -48,12 +48,14 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: "Asia/Colombo",
   });
   
   const eventTimeStr = startDate.toLocaleTimeString("en-LK", {
     hour: "2-digit",
     minute: "2-digit",
-  }) + (event.endDate ? ` - ${new Date(event.endDate).toLocaleTimeString("en-LK", { hour: "2-digit", minute: "2-digit" })}` : "");
+    timeZone: "Asia/Colombo",
+  }) + (event.endDate ? ` - ${new Date(event.endDate).toLocaleTimeString("en-LK", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Colombo" })}` : "");
 
   return (
     <div>
