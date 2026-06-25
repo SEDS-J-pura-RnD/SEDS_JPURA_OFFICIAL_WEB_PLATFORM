@@ -11,29 +11,6 @@ function VerificationForm() {
   const [loading, setLoading] = useState(false);
   const verifiedHashRef = useRef<string | null>(null);
 
-  // Auto-verify if hash is present in search parameters
-  useEffect(() => {
-    const targetHash = hashParam || "";
-
-    if (targetHash.trim()) {
-      if (verifiedHashRef.current !== targetHash) {
-        verifiedHashRef.current = targetHash;
-        triggerVerification(targetHash);
-        
-        // Silently clear the hash query param from address bar so it does not persist in browser history
-        if (typeof window !== "undefined") {
-          window.history.replaceState({}, "", window.location.pathname);
-        }
-      }
-    } else {
-      if (verifiedHashRef.current === null) {
-        setResult(null);
-      } else {
-        verifiedHashRef.current = null;
-      }
-    }
-  }, [hashParam]);
-
   async function triggerVerification(hash: string) {
     setLoading(true);
     setResult(null);
@@ -48,6 +25,24 @@ function VerificationForm() {
       setLoading(false);
     }
   }
+
+  // Auto-verify if hash is present in search parameters
+  useEffect(() => {
+    const targetHash = hashParam || "";
+
+    if (targetHash.trim()) {
+      if (verifiedHashRef.current !== targetHash) {
+        verifiedHashRef.current = targetHash;
+        triggerVerification(targetHash);
+      }
+    } else {
+      if (verifiedHashRef.current === null) {
+        setResult(null);
+      } else {
+        verifiedHashRef.current = null;
+      }
+    }
+  }, [hashParam]);
 
   return (
     <div>
