@@ -5,7 +5,7 @@ import { useSession } from "@/lib/auth-client";
 import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
 import ImageUpload from "@/components/admin/ImageUpload";
-import { checkTeamPrivilegeAction, updateProfileImageAction } from "@/lib/actions/profile";
+import { checkTeamPrivilegeAction, updateProfileImageAction, getMemberProfileAction, updateMemberProfileAction } from "@/lib/actions/profile";
 
 export default function ProfilePage() {
   const { data: session, isPending } = useSession();
@@ -25,11 +25,43 @@ export default function ProfilePage() {
   const [imageUploadSuccess, setImageUploadSuccess] = useState("");
   const [updatingImage, setUpdatingImage] = useState(false);
 
+  // Biography/Profile states
+  const [bio, setBio] = useState("");
+  const [interests, setInterests] = useState("");
+  const [awards, setAwards] = useState("");
+  const [linkedin, setLinkedin] = useState("");
+  const [github, setGithub] = useState("");
+  const [website, setWebsite] = useState("");
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+
   useEffect(() => {
     if (session) {
       checkTeamPrivilegeAction().then((res) => {
         setIsPrivileged(res);
         setImageUrl(session.user.image || "");
+        if (res) {
+          setProfileLoading(true);
+          getMemberProfileAction()
+            .then((prof) => {
+              if (prof) {
+                setBio(prof.bio ?? "");
+                setInterests(prof.interests ? prof.interests.join(", ") : "");
+                setAwards(prof.awards ?? "");
+                setLinkedin(prof.linkedin ?? "");
+                setGithub(prof.github ?? "");
+                setWebsite(prof.website ?? "");
+              }
+            })
+            .catch((err) => {
+              console.error("Failed to load biography:", err);
+            })
+            .finally(() => {
+              setProfileLoading(false);
+            });
+        }
       });
     }
   }, [session]);
@@ -89,6 +121,36 @@ export default function ProfilePage() {
       setError("An unexpected error occurred. Please try again later.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleProfileSave(e: React.FormEvent) {
+    e.preventDefault();
+    setProfileError("");
+    setProfileSuccess(false);
+    setSavingProfile(true);
+
+    const parsedInterests = interests
+      ? interests.split(",").map((i) => i.trim()).filter(Boolean)
+      : [];
+
+    try {
+      const res = await updateMemberProfileAction({
+        bio,
+        interests: parsedInterests,
+        awards,
+        linkedin,
+        github,
+        website,
+      });
+
+      if (res.success) {
+        setProfileSuccess(true);
+      }
+    } catch (err: any) {
+      setProfileError(err.message || "Failed to update profile details.");
+    } finally {
+      setSavingProfile(false);
     }
   }
 
@@ -202,6 +264,137 @@ export default function ProfilePage() {
             )}
           </div>
         </div>
+
+        {/* Biography & Achievements Card (Only for active team members) */}
+        {isPrivileged && (
+          <div className="card">
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.125rem", fontWeight: 700, marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span>🚀</span> Explorer Biography
+            </h2>
+            <p style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)", marginBottom: "1.5rem" }}>
+              These details will be displayed publicly on your member profile page. You can customize your bio, interest areas, and awards.
+            </p>
+
+            {profileLoading ? (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", paddingBlock: "1rem" }}>
+                <span className="spinner" style={{ width: 20, height: 20 }} />
+                <span style={{ fontSize: "0.875rem", color: "var(--color-text-muted)" }}>Loading profile data...</span>
+              </div>
+            ) : (
+              <form onSubmit={handleProfileSave} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="bio">Biography / About</label>
+                  <textarea
+                    id="bio"
+                    className="form-input form-textarea"
+                    placeholder="Tell us about yourself, your background, and your path in SEDS..."
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    disabled={savingProfile}
+                    style={{ minHeight: "120px" }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="interests">Interest Areas</label>
+                  <input
+                    id="interests"
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. Rocketry, biomedical science, astrobiology (comma separated)"
+                    value={interests}
+                    onChange={(e) => setInterests(e.target.value)}
+                    disabled={savingProfile}
+                  />
+                  <span style={{ fontSize: "0.7rem", color: "var(--color-text-dim)", marginTop: "0.25rem", display: "block" }}>
+                    Separate multiple topics with a comma.
+                  </span>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="awards">Awards &amp; Recognitions</label>
+                  <textarea
+                    id="awards"
+                    className="form-input form-textarea"
+                    placeholder="List down any awards, recognitions, or achievements within or outside SEDS..."
+                    value={awards}
+                    onChange={(e) => setAwards(e.target.value)}
+                    disabled={savingProfile}
+                    style={{ minHeight: "100px" }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="linkedin">LinkedIn Profile URL</label>
+                  <input
+                    id="linkedin"
+                    type="url"
+                    className="form-input"
+                    placeholder="e.g. https://linkedin.com/in/username"
+                    value={linkedin}
+                    onChange={(e) => setLinkedin(e.target.value)}
+                    disabled={savingProfile}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="github">GitHub Profile URL</label>
+                  <input
+                    id="github"
+                    type="url"
+                    className="form-input"
+                    placeholder="e.g. https://github.com/username"
+                    value={github}
+                    onChange={(e) => setGithub(e.target.value)}
+                    disabled={savingProfile}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="website">Personal Website / Portfolio URL</label>
+                  <input
+                    id="website"
+                    type="url"
+                    className="form-input"
+                    placeholder="e.g. https://mywebsite.com"
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
+                    disabled={savingProfile}
+                  />
+                </div>
+
+                {profileError && (
+                  <div style={{ padding: "0.75rem 1rem", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "var(--radius-md)", color: "#fca5a5", fontSize: "0.875rem" }}>
+                    ❌ {profileError}
+                  </div>
+                )}
+
+                {profileSuccess && (
+                  <div style={{ padding: "0.75rem 1rem", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", borderRadius: "var(--radius-md)", color: "#6ee7b7", fontSize: "0.875rem" }}>
+                    ✔️ Biography updated successfully!
+                  </div>
+                )}
+
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "0.5rem" }}>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={savingProfile}
+                    style={{ minWidth: "160px" }}
+                  >
+                    {savingProfile ? (
+                      <>
+                        <span className="spinner" style={{ width: 14, height: 14 }} /> Syncing profile...
+                      </>
+                    ) : (
+                      "Save Biography"
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
 
         {/* Change Password Card */}
         <div className="card">

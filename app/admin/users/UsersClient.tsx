@@ -31,6 +31,14 @@ interface User {
   email: string;
   createdAt: Date;
   userRoles: UserRole[];
+  memberProfile?: {
+    bio: string | null;
+    interests: string[];
+    awards: string | null;
+    linkedin: string | null;
+    github: string | null;
+    website: string | null;
+  } | null;
 }
 
 interface UsersClientProps {
@@ -82,6 +90,14 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
   const [formEmail, setFormEmail] = useState("");
   const [formPassword, setFormPassword] = useState("");
 
+  // Member Profile Form states
+  const [formBio, setFormBio] = useState("");
+  const [formInterests, setFormInterests] = useState(""); // Comma-separated
+  const [formAwards, setFormAwards] = useState("");
+  const [formLinkedin, setFormLinkedin] = useState("");
+  const [formGithub, setFormGithub] = useState("");
+  const [formWebsite, setFormWebsite] = useState("");
+
   // Role assignments: map from roleId → assignment details
   const [roleAssignments, setRoleAssignments] = useState<Map<string, RoleAssignment>>(new Map());
 
@@ -95,6 +111,12 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
     email: string;
     password?: string;
     roleNames: string[];
+    bio?: string;
+    interests?: string[];
+    awards?: string;
+    linkedin?: string;
+    github?: string;
+    website?: string;
     isValid: boolean;
     errors: string[];
   }[]>([]);
@@ -145,10 +167,10 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
 
   async function handleDownloadTemplate() {
     const XLSX = await import("xlsx");
-    const headers = [["Name", "Email", "Password", "Roles"]];
+    const headers = [["Name", "Email", "Password", "Roles", "Bio", "Interest Areas", "Awards/Recognitions", "LinkedIn", "GitHub", "Website"]];
     const sampleData = [
-      ["Arthur Dent", "arthur.dent@galaxy.com", "galaxyPass123", "Member"],
-      ["Tricia McMillan", "trillian@galaxy.com", "trillianPass456", "Project Lead, Member"],
+      ["Arthur Dent", "arthur.dent@galaxy.com", "galaxyPass123", "Member", "Deep space explorer with a towel.", "Astronomy, Rocketry", "SEDS Rising Star 2025", "https://linkedin.com/in/arthur", "https://github.com/arthur", "https://arthur.dev"],
+      ["Tricia McMillan", "trillian@galaxy.com", "trillianPass456", "Project Lead, Member", "Astrophysicist and journalist.", "Astrobiology, Space Systems", "Dean's List Award 2024", "https://linkedin.com/in/trillian", "https://github.com/trillian", ""],
     ];
     const ws = XLSX.utils.aoa_to_sheet([...headers, ...sampleData]);
     const wb = XLSX.utils.book_new();
@@ -183,13 +205,26 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
           const emailKey = rowKeys.find(k => k.toLowerCase() === "email") || "Email";
           const passwordKey = rowKeys.find(k => k.toLowerCase() === "password") || "Password";
           const rolesKey = rowKeys.find(k => k.toLowerCase() === "roles") || "Roles";
+          const bioKey = rowKeys.find(k => k.toLowerCase() === "bio") || "Bio";
+          const interestsKey = rowKeys.find(k => k.toLowerCase() === "interest areas" || k.toLowerCase() === "interests") || "Interest Areas";
+          const awardsKey = rowKeys.find(k => k.toLowerCase() === "awards/recognitions" || k.toLowerCase() === "awards" || k.toLowerCase() === "recognitions") || "Awards/Recognitions";
+          const linkedinKey = rowKeys.find(k => k.toLowerCase() === "linkedin" || k.toLowerCase() === "linkedin url") || "LinkedIn";
+          const githubKey = rowKeys.find(k => k.toLowerCase() === "github" || k.toLowerCase() === "github url") || "GitHub";
+          const websiteKey = rowKeys.find(k => k.toLowerCase() === "website" || k.toLowerCase() === "website url" || k.toLowerCase() === "personal website") || "Website";
 
           const name = String(row[nameKey] || "").trim();
           const email = String(row[emailKey] || "").trim();
           const password = String(row[passwordKey] || "").trim();
           const rolesStr = String(row[rolesKey] || "").trim();
+          const bio = String(row[bioKey] || "").trim();
+          const interestsStr = String(row[interestsKey] || "").trim();
+          const awards = String(row[awardsKey] || "").trim();
+          const linkedin = String(row[linkedinKey] || "").trim();
+          const github = String(row[githubKey] || "").trim();
+          const website = String(row[websiteKey] || "").trim();
 
           const roleNames = rolesStr ? rolesStr.split(",").map(r => r.trim()).filter(Boolean) : ["Member"];
+          const interests = interestsStr ? interestsStr.split(",").map(i => i.trim()).filter(Boolean) : [];
 
           const errors: string[] = [];
           if (!name) errors.push("Name is required.");
@@ -207,6 +242,12 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
             email,
             password: password || undefined,
             roleNames,
+            bio: bio || undefined,
+            interests,
+            awards: awards || undefined,
+            linkedin: linkedin || undefined,
+            github: github || undefined,
+            website: website || undefined,
             isValid: errors.length === 0,
             errors,
           };
@@ -238,13 +279,19 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
     setBulkImportProgress(true);
     try {
       const res = await createBulkUsersAction(
-        validUsers.map(u => ({
-          name: u.name,
-          email: u.email,
-          password: u.password,
-          roleNames: u.roleNames,
-        }))
-      );
+          validUsers.map(u => ({
+            name: u.name,
+            email: u.email,
+            password: u.password,
+            roleNames: u.roleNames,
+            bio: u.bio,
+            interests: u.interests,
+            awards: u.awards,
+            linkedin: u.linkedin,
+            github: u.github,
+            website: u.website,
+          }))
+        );
 
       setBulkImportResult({
         success: res.success,
@@ -284,6 +331,12 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
     setFormEmail("");
     setFormPassword("");
     setRoleAssignments(new Map());
+    setFormBio("");
+    setFormInterests("");
+    setFormAwards("");
+    setFormLinkedin("");
+    setFormGithub("");
+    setFormWebsite("");
     setError("");
     setSuccess("");
     setModalOpen(true);
@@ -306,6 +359,12 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
       });
     });
     setRoleAssignments(map);
+    setFormBio(user.memberProfile?.bio ?? "");
+    setFormInterests(user.memberProfile?.interests ? user.memberProfile.interests.join(", ") : "");
+    setFormAwards(user.memberProfile?.awards ?? "");
+    setFormLinkedin(user.memberProfile?.linkedin ?? "");
+    setFormGithub(user.memberProfile?.github ?? "");
+    setFormWebsite(user.memberProfile?.website ?? "");
     setError("");
     setSuccess("");
     setModalOpen(true);
@@ -334,6 +393,10 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
       }
     }
 
+    const parsedInterests = formInterests
+      ? formInterests.split(",").map(x => x.trim()).filter(Boolean)
+      : [];
+
     startTransition(async () => {
       try {
         if (editingUser) {
@@ -341,6 +404,12 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
             name: formName,
             email: formEmail,
             roleAssignments: assignmentsToPayload(),
+            bio: formBio,
+            interests: parsedInterests,
+            awards: formAwards,
+            linkedin: formLinkedin,
+            github: formGithub,
+            website: formWebsite,
           });
           if (res.success) {
             setSuccess("Member details updated successfully.");
@@ -355,6 +424,12 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
             email: formEmail,
             roleAssignments: assignmentsToPayload(),
             password: formPassword,
+            bio: formBio,
+            interests: parsedInterests,
+            awards: formAwards,
+            linkedin: formLinkedin,
+            github: formGithub,
+            website: formWebsite,
           });
           if (res.success) {
             setSuccess("Member account established successfully.");
@@ -566,6 +641,84 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
                   />
                 </div>
               )}
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="user-bio">Biography (Optional)</label>
+                <textarea
+                  id="user-bio"
+                  className="form-input form-textarea"
+                  placeholder="Tell us about the explorer's background, work, or journey..."
+                  value={formBio}
+                  onChange={(e) => setFormBio(e.target.value)}
+                  disabled={isPending}
+                  style={{ minHeight: "80px" }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="user-interests">Interest Areas (Optional)</label>
+                <input
+                  id="user-interests"
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Rocketry, Biomedical science, Astrobiology (comma separated)"
+                  value={formInterests}
+                  onChange={(e) => setFormInterests(e.target.value)}
+                  disabled={isPending}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="user-awards">Awards or Recognitions (Optional)</label>
+                <textarea
+                  id="user-awards"
+                  className="form-input form-textarea"
+                  placeholder="e.g. SEDS Leader of the Year 2024, Hackathon Winner..."
+                  value={formAwards}
+                  onChange={(e) => setFormAwards(e.target.value)}
+                  disabled={isPending}
+                  style={{ minHeight: "80px" }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="user-linkedin">LinkedIn Profile URL (Optional)</label>
+                <input
+                  id="user-linkedin"
+                  type="url"
+                  className="form-input"
+                  placeholder="e.g. https://linkedin.com/in/username"
+                  value={formLinkedin}
+                  onChange={(e) => setFormLinkedin(e.target.value)}
+                  disabled={isPending}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="user-github">GitHub Profile URL (Optional)</label>
+                <input
+                  id="user-github"
+                  type="url"
+                  className="form-input"
+                  placeholder="e.g. https://github.com/username"
+                  value={formGithub}
+                  onChange={(e) => setFormGithub(e.target.value)}
+                  disabled={isPending}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="user-website">Personal Website URL (Optional)</label>
+                <input
+                  id="user-website"
+                  type="url"
+                  className="form-input"
+                  placeholder="e.g. https://mywebsite.com"
+                  value={formWebsite}
+                  onChange={(e) => setFormWebsite(e.target.value)}
+                  disabled={isPending}
+                />
+              </div>
 
               {/* Role Assignments */}
               <div className="form-group">
@@ -784,14 +937,26 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
                       <tbody>
                         {bulkUsers.map((user, idx) => (
                           <tr key={idx} style={{ borderBottom: "1px solid rgba(255,255,255,0.02)", background: user.isValid ? "transparent" : "rgba(239,68,68,0.02)" }}>
-                            <td style={{ padding: "0.75rem", fontWeight: 600 }}>{user.name || <em style={{ color: "var(--color-text-dim)" }}>[Empty]</em>}</td>
+                            <td style={{ padding: "0.75rem" }}>
+                              <div style={{ fontWeight: 600 }}>{user.name || <em style={{ color: "var(--color-text-dim)" }}>[Empty]</em>}</div>
+                              {user.bio && (
+                                <div style={{ fontSize: "0.7rem", color: "var(--color-text-dim)", marginTop: "0.25rem", maxWidth: "250px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  <strong>Bio:</strong> {user.bio}
+                                </div>
+                              )}
+                            </td>
                             <td style={{ padding: "0.75rem", color: "var(--color-text-muted)" }}>{user.email || <em style={{ color: "var(--color-text-dim)" }}>[Empty]</em>}</td>
                             <td style={{ padding: "0.75rem" }}>
-                              <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
+                              <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", marginBottom: "0.25rem" }}>
                                 {user.roleNames.map((r, i) => (
                                   <span key={i} className="badge badge-cosmic" style={{ fontSize: "0.6rem" }}>{r}</span>
                                 ))}
                               </div>
+                              {user.interests && user.interests.length > 0 && (
+                                <div style={{ fontSize: "0.7rem", color: "var(--color-text-dim)", marginTop: "0.25rem" }}>
+                                  <strong>Interests:</strong> {user.interests.join(", ")}
+                                </div>
+                              )}
                             </td>
                             <td style={{ padding: "0.75rem" }}>
                               {user.isValid ? (

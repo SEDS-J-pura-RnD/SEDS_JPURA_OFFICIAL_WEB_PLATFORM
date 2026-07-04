@@ -244,8 +244,9 @@ export default async function TeamPage() {
                       }}
                     >
                       {members.map((m) => (
-                        <div
+                        <Link
                           key={`${m.userId}-${m.roleId}`}
+                          href={`/members/${m.userId}`}
                           style={{
                             background: colors.bg,
                             border: `1px solid ${colors.border}`,
@@ -256,7 +257,9 @@ export default async function TeamPage() {
                             alignItems: "center",
                             textAlign: "center",
                             gap: "0.75rem",
-                            transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                            transition: "all 0.2s ease-in-out",
+                            textDecoration: "none",
+                            color: "inherit",
                           }}
                           className="team-card"
                         >
@@ -319,11 +322,12 @@ export default async function TeamPage() {
                                 }}
                               >
                                 {m.position}
+                                {m.termFrom ? ` (${m.termFrom}${m.termTo ? ` – ${m.termTo}` : " – Present"})` : ""}
                               </div>
                             )}
 
                           </div>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   </div>

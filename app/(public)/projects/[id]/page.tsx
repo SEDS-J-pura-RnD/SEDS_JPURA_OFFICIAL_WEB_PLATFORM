@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import type { Metadata } from "next";
 import type { Sponsor } from "@prisma/client";
+import Link from "next/link";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -152,7 +153,22 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                       return 0;
                     })
                     .map((m) => (
-                      <div key={m.userId} style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                      <Link
+                        key={m.userId}
+                        href={`/members/${m.userId}`}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.75rem",
+                          textDecoration: "none",
+                          color: "inherit",
+                          padding: "0.25rem 0.5rem",
+                          marginInline: "-0.5rem",
+                          borderRadius: "var(--radius-md)",
+                          transition: "all 0.2s ease-in-out",
+                        }}
+                        className="project-member-link"
+                      >
                         <div style={{
                           width: 36, height: 36, borderRadius: "50%",
                           background: "var(--gradient-cosmic)",
@@ -165,7 +181,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                           <div style={{ fontWeight: 600, fontSize: "0.875rem" }}>{m.user.name}</div>
                           <div style={{ fontSize: "0.75rem", color: "var(--color-text-dim)" }}>{m.projectRole}</div>
                         </div>
-                      </div>
+                      </Link>
                     ))}
                 </div>
               )}

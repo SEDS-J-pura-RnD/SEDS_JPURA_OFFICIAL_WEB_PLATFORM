@@ -30,6 +30,7 @@ model User {
   projectMembers ProjectMember[]
   newsArticles   News[]
   auditLogs      AuditLog[]
+  memberProfile  MemberProfile?
 
   @@map("user")
   @@schema("neon_auth")
@@ -427,5 +428,22 @@ enum SponsorTier {
   BRONZE
   PARTNER
 
+  @@schema("public")
+}
+
+model MemberProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique @db.Uuid
+  bio       String?
+  interests String[]
+  awards    String?
+  linkedin  String?
+  github    String?
+  website   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("member_profiles")
   @@schema("public")
 }

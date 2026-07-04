@@ -17,6 +17,7 @@ async function getAdminUsersData() {
           role: { select: { id: true, name: true, isActive: true } },
         },
       },
+      memberProfile: true,
     },
   });
 

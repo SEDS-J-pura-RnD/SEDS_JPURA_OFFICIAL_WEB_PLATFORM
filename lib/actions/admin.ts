@@ -45,6 +45,12 @@ export async function createUserAction(data: {
   email: string;
   roleAssignments: { roleId: string; position?: string; termFrom?: number; termTo?: number; displayOrder?: number }[];
   password?: string;
+  bio?: string;
+  interests?: string[];
+  awards?: string;
+  linkedin?: string;
+  github?: string;
+  website?: string;
 }) {
   const session = await checkPermissionClearance(PERMISSIONS.CREATE_USER);
   const ip = await getClientIP();
@@ -57,6 +63,21 @@ export async function createUserAction(data: {
       emailVerified: true, // Seeding/creating via admin trusts the email by default
     },
   });
+
+  // Create member profile details if provided
+  if (data.bio || (data.interests && data.interests.length > 0) || data.awards || data.linkedin || data.github || data.website) {
+    await prisma.memberProfile.create({
+      data: {
+        userId: newUser.id,
+        bio: data.bio || null,
+        interests: data.interests || [],
+        awards: data.awards || null,
+        linkedin: data.linkedin || null,
+        github: data.github || null,
+        website: data.website || null,
+      },
+    });
+  }
 
   // Assign roles with position and term
   if (data.roleAssignments && data.roleAssignments.length > 0) {
@@ -105,6 +126,12 @@ export async function updateUserAction(
     name: string;
     email: string;
     roleAssignments: { roleId: string; position?: string; termFrom?: number; termTo?: number; displayOrder?: number }[];
+    bio?: string;
+    interests?: string[];
+    awards?: string;
+    linkedin?: string;
+    github?: string;
+    website?: string;
   }
 ) {
   const session = await checkPermissionClearance(PERMISSIONS.EDIT_USER);
@@ -123,6 +150,28 @@ export async function updateUserAction(
     data: {
       name: data.name,
       email: data.email,
+    },
+  });
+
+  // Update member profile details (upsert because it might not exist yet)
+  await prisma.memberProfile.upsert({
+    where: { userId: targetUserId },
+    update: {
+      bio: data.bio || null,
+      interests: data.interests || [],
+      awards: data.awards || null,
+      linkedin: data.linkedin || null,
+      github: data.github || null,
+      website: data.website || null,
+    },
+    create: {
+      userId: targetUserId,
+      bio: data.bio || null,
+      interests: data.interests || [],
+      awards: data.awards || null,
+      linkedin: data.linkedin || null,
+      github: data.github || null,
+      website: data.website || null,
     },
   });
 
@@ -1128,6 +1177,12 @@ export async function createBulkUsersAction(users: {
   email: string;
   password?: string;
   roleNames: string[];
+  bio?: string;
+  interests?: string[];
+  awards?: string;
+  linkedin?: string;
+  github?: string;
+  website?: string;
 }[]) {
   const session = await checkPermissionClearance(PERMISSIONS.CREATE_USER);
   const ip = await getClientIP();
@@ -1201,6 +1256,21 @@ export async function createBulkUsersAction(users: {
             accountId: newUser.id,
             providerId: "credential",
             password: hashedPassword,
+          },
+        });
+      }
+
+      // Create Member Profile details if provided
+      if (u.bio || (u.interests && u.interests.length > 0) || u.awards || u.linkedin || u.github || u.website) {
+        await prisma.memberProfile.create({
+          data: {
+            userId: newUser.id,
+            bio: u.bio || null,
+            interests: u.interests || [],
+            awards: u.awards || null,
+            linkedin: u.linkedin || null,
+            github: u.github || null,
+            website: u.website || null,
           },
         });
       }
