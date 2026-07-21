@@ -25,6 +25,19 @@ async function getStats() {
   }
 }
 
+async function getRecentNews() {
+  try {
+    return await prisma.news.findMany({
+      where: { isPublished: true },
+      include: { author: { select: { name: true } } },
+      orderBy: { publishedAt: "desc" },
+      take: 3,
+    });
+  } catch {
+    return [];
+  }
+}
+
 const divisions = [
   {
     icon: "🛰️",
@@ -64,7 +77,10 @@ const divisions = [
 ];
 
 export default async function HomePage() {
-  const stats = await getStats();
+  const [stats, recentNews] = await Promise.all([
+    getStats(),
+    getRecentNews(),
+  ]);
 
   return (
     <div className="home-page-bg">
@@ -80,9 +96,6 @@ export default async function HomePage() {
 
         <div className="container">
           <div className="hero-content">
-            <div className="hero-badge animate-reveal-up delay-100">
-              <span>SEDS J'pura</span>
-            </div>
 
             <h1 className="hero-title" style={{ display: "flex", flexDirection: "column" }}>
               <span className="reveal-text-container">
@@ -139,7 +152,6 @@ export default async function HomePage() {
       <section className="section">
         <div className="container">
           <div className="section-header">
-            <div className="section-tag">🔬 RESEARCH DIVISIONS</div>
             <h2 className="section-title">
               Five Frontiers of{" "}
               <span className="text-gradient">Space Science</span>
@@ -179,7 +191,6 @@ export default async function HomePage() {
         <div className="container">
           <div className="mission-inner">
             <div className="mission-content">
-              <div className="section-tag">🌟 OUR MISSION</div>
               <h2 className="section-title" style={{ textAlign: "left", marginBottom: "1.5rem" }}>
                 Inspiring the Next Generation of{" "}
                 <span className="text-gradient">Space Pioneers</span>
@@ -222,7 +233,6 @@ export default async function HomePage() {
       <section className="section">
         <div className="container">
           <div className="section-header">
-            <div className="section-tag">📰 LATEST NEWS</div>
             <h2 className="section-title">
               Stay <span className="text-gradient">Updated</span>
             </h2>
@@ -230,11 +240,80 @@ export default async function HomePage() {
               Latest announcements, research updates, and achievements from SEDS J&apos;pura.
             </p>
           </div>
-          <div className="news-placeholder">
-            <div className="news-placeholder-icon">🌌</div>
-            <p>News articles will appear here once published by the team.</p>
-            <Link href="/news" className="btn btn-ghost">Browse All News</Link>
-          </div>
+          {recentNews.length === 0 ? (
+            <div className="news-placeholder">
+              <div className="news-placeholder-icon">🌌</div>
+              <p>News articles will appear here once published by the team.</p>
+              <Link href="/news" className="btn btn-ghost">Browse All News</Link>
+            </div>
+          ) : (
+            <>
+              <div className="grid-3" style={{ marginBottom: "2.5rem" }}>
+                {recentNews.map((article) => (
+                  <Link
+                    key={article.id}
+                    href={`/news/${article.slug}`}
+                    className="news-card card"
+                    style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}
+                  >
+                    {/* Cover Image */}
+                    <div style={{
+                      width: "100%",
+                      height: "160px",
+                      position: "relative",
+                      overflow: "hidden",
+                      background: "linear-gradient(135deg, rgba(99,102,241,0.15), rgba(245,158,11,0.08))",
+                      flexShrink: 0,
+                    }}>
+                      {article.imageUrl ? (
+                        <img
+                          src={article.imageUrl}
+                          alt={article.title}
+                          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: "100%", height: "100%",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: "2.5rem", opacity: 0.2,
+                        }}>📰</div>
+                      )}
+                      <div style={{
+                        position: "absolute", inset: 0,
+                        background: "linear-gradient(to top, rgba(5,13,26,0.85) 0%, transparent 55%)",
+                      }} />
+                    </div>
+
+                    {/* Card Body */}
+                    <div style={{ padding: "1.25rem", flex: 1, display: "flex", flexDirection: "column" }}>
+                      <div className="news-tags" style={{ marginBottom: "0.75rem" }}>
+                        {article.tags.slice(0, 2).map((tag) => (
+                          <span key={tag} className="badge badge-cosmic">{tag}</span>
+                        ))}
+                      </div>
+                      <h2 className="news-title" style={{ flex: 1 }}>{article.title}</h2>
+                      <p className="news-excerpt">{article.excerpt}</p>
+                      <div className="news-meta">
+                        <span className="text-muted" style={{ fontSize: "0.8125rem" }}>
+                          By {article.author.name}
+                        </span>
+                        {article.publishedAt && (
+                          <span className="text-muted" style={{ fontSize: "0.8125rem" }}>
+                            {new Date(article.publishedAt).toLocaleDateString("en-LK", { day: "numeric", month: "short", year: "numeric" })}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <Link href="/news" className="btn btn-secondary">
+                  Browse All News
+                </Link>
+              </div>
+            </>
+          )}
         </div>
       </section>
 
