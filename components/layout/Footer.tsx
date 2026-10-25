@@ -120,7 +120,6 @@ export default function Footer() {
           <div className="footer-bottom-inner">
             <p className="footer-copyright">
               © {new Date().getFullYear()} SEDS J&apos;pura. All rights reserved.
-              Built with ❤️ for the stars.
             </p>
             <div className="footer-bottom-links">
               <Link href="/certificates/verify" className="footer-link">Verify Certificate</Link>
