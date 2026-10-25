@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { uploadFile } from "@/lib/supabase";
+import { uploadFile } from "@/lib/upload";
 
 interface ImageUploadProps {
   label: string;
@@ -16,7 +16,7 @@ export default function ImageUpload({
   label,
   value,
   onChange,
-  bucket = "seds-media",
+  bucket = "seds-jp-web-storage",
   disabled = false,
   aspectRatio = 1,
 }: ImageUploadProps) {

@@ -5,13 +5,13 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "jhcozemvdzjpgkryrphn.supabase.co",
-        pathname: "/storage/v1/object/public/**",
+        hostname: "**.neon.tech",
+        pathname: "/**",
       },
       {
         protocol: "https",
-        hostname: "**.supabase.co",
-        pathname: "/storage/v1/object/public/**",
+        hostname: "**.amazonaws.com",
+        pathname: "/**",
       },
     ],
   },
