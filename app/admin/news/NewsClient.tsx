@@ -289,6 +289,7 @@ export default function NewsClient({ initialNews }: NewsClientProps) {
                 value={imageUrl}
                 onChange={setImageUrl}
                 disabled={isPending}
+                aspectRatio={16 / 9}
               />
 
               <div className="form-group">

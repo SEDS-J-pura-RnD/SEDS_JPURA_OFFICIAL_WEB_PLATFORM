@@ -405,6 +405,7 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
                 value={imageUrl}
                 onChange={setImageUrl}
                 disabled={isPending}
+                aspectRatio={16 / 9}
               />
 
               <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem", cursor: "pointer", marginTop: "0.5rem" }}>

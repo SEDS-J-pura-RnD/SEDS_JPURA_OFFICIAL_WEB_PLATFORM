@@ -418,6 +418,7 @@ export default function ProjectsClient({
                 value={imageUrl}
                 onChange={setImageUrl}
                 disabled={isPending}
+                aspectRatio={16 / 9}
               />
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>

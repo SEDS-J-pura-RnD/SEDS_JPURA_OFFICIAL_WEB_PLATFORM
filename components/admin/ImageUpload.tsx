@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { uploadFile } from "@/lib/upload";
 
 interface ImageUploadProps {
@@ -9,7 +9,7 @@ interface ImageUploadProps {
   onChange: (url: string) => void;
   bucket?: string;
   disabled?: boolean;
-  aspectRatio?: number; // Configurable crop aspect ratio (default 1)
+  aspectRatio?: number; // Configurable crop aspect ratio (e.g. 16/9 or 1)
 }
 
 export default function ImageUpload({
@@ -29,7 +29,9 @@ export default function ImageUpload({
   // Crop & Edit States
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [srcImage, setSrcImage] = useState<string | null>(null);
+  const [rawFile, setRawFile] = useState<File | null>(null);
   const [originalFileName, setOriginalFileName] = useState("");
+  const [activeAspectRatio, setActiveAspectRatio] = useState<number>(aspectRatio);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -37,14 +39,18 @@ export default function ImageUpload({
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const imgRef = useRef<HTMLImageElement | null>(null);
 
-  // Crop box bounding box math (fits nicely within 300x300 viewport)
+  useEffect(() => {
+    setActiveAspectRatio(aspectRatio);
+  }, [aspectRatio]);
+
+  // Crop box bounding box math (fits nicely within 320x220 viewport)
   const maxCropDim = 300;
   let cropWidth = maxCropDim;
   let cropHeight = maxCropDim;
-  if (aspectRatio > 1) {
-    cropHeight = maxCropDim / aspectRatio;
-  } else if (aspectRatio < 1) {
-    cropWidth = maxCropDim * aspectRatio;
+  if (activeAspectRatio > 1) {
+    cropHeight = maxCropDim / activeAspectRatio;
+  } else if (activeAspectRatio < 1) {
+    cropWidth = maxCropDim * activeAspectRatio;
   }
 
   // baseScale is the minimum scale required to cover the crop container completely
@@ -116,6 +122,7 @@ export default function ImageUpload({
       return;
     }
     setError("");
+    setRawFile(file);
     setOriginalFileName(file.name);
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -154,6 +161,30 @@ export default function ImageUpload({
     }
   };
 
+  /**
+   * Upload the original image file directly without any cropping or compression.
+   */
+  const handleUploadOriginal = async () => {
+    if (!rawFile) return;
+
+    setCropModalOpen(false);
+    setUploading(true);
+    setError("");
+
+    try {
+      const publicUrl = await uploadFile(rawFile, bucket);
+      onChange(publicUrl);
+    } catch (err: any) {
+      console.error("Direct upload error:", err);
+      setError(err.message || "Failed to upload image.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  /**
+   * Apply crop and export as a high-definition WebP file.
+   */
   const handleApplyCrop = async () => {
     if (!srcImage || !imageSize.width || !imageSize.height) return;
 
@@ -167,9 +198,9 @@ export default function ImageUpload({
       await new Promise((resolve) => (img.onload = resolve));
 
       const canvas = document.createElement("canvas");
-      // Output dimensions (600px width for clean, high-resolution rendering)
-      const outputWidth = 600;
-      const outputHeight = 600 / aspectRatio;
+      // Output dimensions (1280px width for crystal clear, high-resolution rendering)
+      const outputWidth = activeAspectRatio >= 1 ? 1280 : 800;
+      const outputHeight = Math.round(outputWidth / activeAspectRatio);
       canvas.width = outputWidth;
       canvas.height = outputHeight;
 
@@ -212,9 +243,8 @@ export default function ImageUpload({
           }
 
           try {
-            // Constrain output size to 5MB
-            if (blob.size > 5 * 1024 * 1024) {
-              throw new Error("Cropped output exceeds 5MB size limit.");
+            if (blob.size > 10 * 1024 * 1024) {
+              throw new Error("Cropped output exceeds 10MB size limit.");
             }
 
             const cleanName = originalFileName.replace(/\.[^/.]+$/, "") + ".webp";
@@ -230,7 +260,7 @@ export default function ImageUpload({
           }
         },
         "image/webp",
-        0.85
+        0.88
       );
     } catch (err: any) {
       console.error("Crop processing error:", err);
@@ -256,7 +286,7 @@ export default function ImageUpload({
         .crop-backdrop {
           position: fixed;
           inset: 0;
-          background: rgba(3, 7, 18, 0.85);
+          background: rgba(3, 7, 18, 0.88);
           backdrop-filter: blur(8px);
           z-index: 200;
           display: flex;
@@ -266,11 +296,11 @@ export default function ImageUpload({
         }
         .crop-card {
           width: 100%;
-          max-width: 420px;
+          max-width: 480px;
           background: #0b0f19;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 12px;
-          box-shadow: 0 0 24px rgba(99, 102, 241, 0.15);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 14px;
+          box-shadow: 0 0 32px rgba(99, 102, 241, 0.2);
           padding: 1.5rem;
           display: flex;
           flex-direction: column;
@@ -280,7 +310,7 @@ export default function ImageUpload({
           overflow: hidden;
           border-radius: 8px;
           background: #05070c;
-          border: 2px solid rgba(255, 255, 255, 0.12);
+          border: 2px solid rgba(255, 255, 255, 0.15);
           cursor: grab;
           user-select: none;
         }
@@ -353,11 +383,11 @@ export default function ImageUpload({
             >
               <div
                 style={{
-                  width: "64px",
-                  height: "64px",
+                  width: "80px",
+                  height: "50px",
                   borderRadius: "var(--radius-sm)",
                   overflow: "hidden",
-                  border: "1px solid rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.08)",
                   background: "var(--color-space)",
                   display: "flex",
                   alignItems: "center",
@@ -424,8 +454,8 @@ export default function ImageUpload({
               {uploading ? (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
                   <div style={{
-                    width: "20px",
-                    height: "20px",
+                    width: "22px",
+                    height: "22px",
                     border: "2.5px solid rgba(255,255,255,0.1)",
                     borderTop: "2.5px solid var(--color-stellar)",
                     borderRadius: "50%",
@@ -435,12 +465,12 @@ export default function ImageUpload({
                 </div>
               ) : (
                 <>
-                  <span style={{ fontSize: "1.25rem", marginBottom: "0.375rem" }}>🛰️</span>
+                  <span style={{ fontSize: "1.35rem", marginBottom: "0.375rem" }}>🛰️</span>
                   <span style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)", fontWeight: 500 }}>
                     {isDragOver ? "Release to launch file!" : "Drag & drop image, or click to browse"}
                   </span>
                   <span style={{ fontSize: "0.65rem", color: "var(--color-text-dim)", marginTop: "0.2rem" }}>
-                    PNG, JPG, SVG, WebP up to 5MB
+                    PNG, JPG, WebP up to 10MB
                   </span>
                 </>
               )}
@@ -463,16 +493,79 @@ export default function ImageUpload({
         </div>
       )}
 
-      {/* Interactive Crop Modal */}
+      {/* Interactive Crop & Frame Modal */}
       {cropModalOpen && srcImage && (
         <div className="crop-backdrop">
           <div className="crop-card">
-            <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem", fontWeight: 800, marginBottom: "1rem", color: "white" }}>
-              📐 Frame & Crop Image
-            </h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+              <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.05rem", fontWeight: 800, color: "white", margin: 0 }}>
+                📐 Frame & Crop Image
+              </h3>
+              {/* Aspect Ratio Presets */}
+              <div style={{ display: "flex", gap: "0.35rem" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveAspectRatio(16 / 9);
+                    setOffset({ x: 0, y: 0 });
+                  }}
+                  className="btn"
+                  style={{
+                    padding: "0.15rem 0.45rem",
+                    fontSize: "0.7rem",
+                    background: activeAspectRatio === 16 / 9 ? "var(--color-stellar)" : "rgba(255,255,255,0.06)",
+                    color: activeAspectRatio === 16 / 9 ? "#05070c" : "var(--color-text-muted)",
+                    fontWeight: activeAspectRatio === 16 / 9 ? 700 : 500,
+                    borderRadius: "4px"
+                  }}
+                >
+                  16:9
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveAspectRatio(1);
+                    setOffset({ x: 0, y: 0 });
+                  }}
+                  className="btn"
+                  style={{
+                    padding: "0.15rem 0.45rem",
+                    fontSize: "0.7rem",
+                    background: activeAspectRatio === 1 ? "var(--color-stellar)" : "rgba(255,255,255,0.06)",
+                    color: activeAspectRatio === 1 ? "#05070c" : "var(--color-text-muted)",
+                    fontWeight: activeAspectRatio === 1 ? 700 : 500,
+                    borderRadius: "4px"
+                  }}
+                >
+                  1:1
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveAspectRatio(4 / 3);
+                    setOffset({ x: 0, y: 0 });
+                  }}
+                  className="btn"
+                  style={{
+                    padding: "0.15rem 0.45rem",
+                    fontSize: "0.7rem",
+                    background: activeAspectRatio === 4 / 3 ? "var(--color-stellar)" : "rgba(255,255,255,0.06)",
+                    color: activeAspectRatio === 4 / 3 ? "#05070c" : "var(--color-text-muted)",
+                    fontWeight: activeAspectRatio === 4 / 3 ? 700 : 500,
+                    borderRadius: "4px"
+                  }}
+                >
+                  4:3
+                </button>
+              </div>
+            </div>
+
+            <p style={{ fontSize: "0.725rem", color: "var(--color-text-dim)", marginBottom: "0.75rem", marginTop: 0 }}>
+              Drag to reposition, zoom to frame, or click <strong>Upload Original</strong> to skip cropping.
+            </p>
 
             {/* Crop Box Viewport */}
-            <div style={{ display: "flex", justifyContent: "center", background: "#05070c", padding: "1.5rem", borderRadius: "var(--radius-md)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", background: "#05070c", padding: "1rem", borderRadius: "var(--radius-md)", border: "1px solid rgba(255,255,255,0.06)", minHeight: "220px" }}>
               <div
                 className="crop-window"
                 style={{
@@ -517,7 +610,7 @@ export default function ImageUpload({
             </div>
 
             {/* Zoom Slider Controls */}
-            <div style={{ marginTop: "1.25rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
                 <span>Zoom Level</span>
                 <span>{(zoom * 100).toFixed(0)}%</span>
@@ -537,23 +630,42 @@ export default function ImageUpload({
               />
             </div>
 
-            {/* Modal Controls */}
-            <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.5rem", justifyContent: "flex-end" }}>
+            {/* Modal Actions */}
+            <div style={{ display: "flex", gap: "0.5rem", marginTop: "1.25rem", justifyContent: "space-between", flexWrap: "wrap" }}>
               <button
                 type="button"
                 onClick={() => setCropModalOpen(false)}
                 className="btn btn-ghost"
+                style={{ fontSize: "0.775rem" }}
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={handleApplyCrop}
-                className="btn btn-primary"
-                style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
-              >
-                Apply Crop ✂️
-              </button>
+
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  type="button"
+                  onClick={handleUploadOriginal}
+                  className="btn"
+                  title="Upload the image directly in its original resolution and aspect ratio"
+                  style={{
+                    fontSize: "0.775rem",
+                    background: "rgba(255, 255, 255, 0.08)",
+                    border: "1px solid var(--color-border)",
+                    color: "white"
+                  }}
+                >
+                  Upload Original ✨
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleApplyCrop}
+                  className="btn btn-primary"
+                  style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", fontSize: "0.775rem" }}
+                >
+                  Apply Crop ✂️
+                </button>
+              </div>
             </div>
           </div>
         </div>
