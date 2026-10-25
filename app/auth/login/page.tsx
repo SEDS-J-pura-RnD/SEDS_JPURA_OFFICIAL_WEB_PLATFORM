@@ -18,7 +18,7 @@ export default function LoginPage() {
 
     try {
       const { data, error: authError } = await signIn.email({
-        email: form.email,
+        email: form.email.trim(),
         password: form.password,
       });
 
