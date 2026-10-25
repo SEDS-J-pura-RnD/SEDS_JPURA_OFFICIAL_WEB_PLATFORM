@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createUserAction, updateUserAction, deleteUserAction, createBulkUsersAction } from "@/lib/actions/admin";
+import { createUserAction, updateUserAction, deleteUserAction, createBulkUsersAction, resetUserPasswordAction } from "@/lib/actions/admin";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -400,6 +400,14 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
     startTransition(async () => {
       try {
         if (editingUser) {
+          if (formPassword.trim()) {
+            if (formPassword.trim().length < 8) {
+              setError("New password must be at least 8 characters long.");
+              return;
+            }
+            await resetUserPasswordAction(editingUser.id, formPassword.trim());
+          }
+
           const res = await updateUserAction(editingUser.id, {
             name: formName,
             email: formEmail,
@@ -412,7 +420,7 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
             website: formWebsite,
           });
           if (res.success) {
-            setSuccess("Member details updated successfully.");
+            setSuccess(formPassword.trim() ? "Member details and password updated successfully." : "Member details updated successfully.");
             setTimeout(() => {
               setModalOpen(false);
               router.refresh();
@@ -626,21 +634,26 @@ export default function UsersClient({ initialUsers, roles }: UsersClientProps) {
                 />
               </div>
 
-              {!editingUser && (
-                <div className="form-group">
-                  <label className="form-label" htmlFor="user-password">Initial Password</label>
-                  <input
-                    id="user-password"
-                    type="password"
-                    className="form-input"
-                    placeholder="At least 8 characters"
-                    value={formPassword}
-                    onChange={(e) => setFormPassword(e.target.value)}
-                    disabled={isPending}
-                    required
-                  />
-                </div>
-              )}
+              <div className="form-group">
+                <label className="form-label" htmlFor="user-password">
+                  {editingUser ? "Reset Password (Optional)" : "Initial Password"}
+                </label>
+                <input
+                  id="user-password"
+                  type="password"
+                  className="form-input"
+                  placeholder={editingUser ? "Leave blank to keep existing password" : "At least 8 characters"}
+                  value={formPassword}
+                  onChange={(e) => setFormPassword(e.target.value)}
+                  disabled={isPending}
+                  required={!editingUser}
+                />
+                {editingUser && (
+                  <span style={{ fontSize: "0.7rem", color: "var(--color-text-dim)", marginTop: "0.25rem", display: "block" }}>
+                    Enter a new password (min. 8 characters) to reset this member&apos;s forgotten password.
+                  </span>
+                )}
+              </div>
 
               <div className="form-group">
                 <label className="form-label" htmlFor="user-bio">Biography (Optional)</label>

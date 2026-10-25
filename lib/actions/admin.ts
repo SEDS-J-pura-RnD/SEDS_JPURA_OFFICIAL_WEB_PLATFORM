@@ -205,6 +205,52 @@ export async function updateUserAction(
   return { success: true };
 }
 
+export async function resetUserPasswordAction(targetUserId: string, newPassword: string) {
+  const session = await checkPermissionClearance(PERMISSIONS.EDIT_USER);
+  const ip = await getClientIP();
+
+  if (!newPassword || newPassword.length < 8) {
+    throw new Error("Password must be at least 8 characters long.");
+  }
+
+  const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
+  if (!targetUser) throw new Error("Target member record not found.");
+
+  const hashedPassword = await hashPassword(newPassword);
+
+  const existingAccount = await prisma.account.findFirst({
+    where: { userId: targetUserId, providerId: "credential" },
+  });
+
+  if (existingAccount) {
+    await prisma.account.update({
+      where: { id: existingAccount.id },
+      data: { password: hashedPassword },
+    });
+  } else {
+    await prisma.account.create({
+      data: {
+        id: crypto.randomUUID(),
+        userId: targetUserId,
+        accountId: targetUserId,
+        providerId: "credential",
+        password: hashedPassword,
+      },
+    });
+  }
+
+  await logAudit({
+    userId: session.user.id,
+    action: "USER_UPDATED",
+    entity: "User",
+    entityId: targetUserId,
+    newState: { email: targetUser.email, passwordReset: true },
+    ipAddress: ip,
+  });
+
+  return { success: true };
+}
+
 export async function deleteUserAction(targetUserId: string) {
   const session = await checkPermissionClearance(PERMISSIONS.DELETE_USER);
   const ip = await getClientIP();
