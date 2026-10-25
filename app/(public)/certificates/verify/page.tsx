@@ -1,14 +1,18 @@
 "use client";
 
 import { useState, useEffect, Suspense, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import QrScannerModal from "@/components/certificates/QrScannerModal";
+import { getCertificateVerifyUrl } from "@/lib/certificate-url";
 
 function VerificationForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const hashParam = searchParams.get("hash");
 
   const [result, setResult] = useState<null | { valid: boolean; data?: Record<string, unknown>; message?: string }>(null);
   const [loading, setLoading] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const verifiedHashRef = useRef<string | null>(null);
 
   async function triggerVerification(hash: string) {
@@ -25,6 +29,12 @@ function VerificationForm() {
       setLoading(false);
     }
   }
+
+  // Handle scanned hash from QR modal
+  const handleHashDetected = (hash: string) => {
+    router.push(`/certificates/verify?hash=${encodeURIComponent(hash)}`);
+    triggerVerification(hash);
+  };
 
   // Auto-verify if hash is present in search parameters
   useEffect(() => {
@@ -48,7 +58,7 @@ function VerificationForm() {
     <div>
       <section style={{ padding: "5rem 0", background: "radial-gradient(ellipse at 50% 0%, rgba(99,102,241,0.1) 0%, transparent 60%)" }}>
         <div className="container-sm">
-          <div style={{ textAlign: "center", marginBottom: "3rem" }}>
+          <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
             <div className="section-tag">🏆 CERTIFICATE AUTHENTICATION</div>
             <h1 className="section-title">
               Verifiable <span className="text-gradient">Credentials</span>
@@ -58,22 +68,44 @@ function VerificationForm() {
             </p>
           </div>
 
-          <div className="card" style={{ maxWidth: "500px", margin: "0 auto" }}>
+          <div className="card" style={{ maxWidth: "520px", margin: "0 auto", padding: "1.75rem" }}>
+            {/* Quick Action Button to Open Scanner */}
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: "1.5rem" }}>
+              <button
+                type="button"
+                onClick={() => setScannerOpen(true)}
+                className="btn btn-primary"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  padding: "0.6rem 1.25rem",
+                  fontSize: "0.875rem",
+                  boxShadow: "0 0 20px rgba(99, 102, 241, 0.3)",
+                }}
+              >
+                <span>📷</span>
+                <span>Scan Certificate QR Code</span>
+              </button>
+            </div>
+
             {loading && (
-              <div style={{ textAlign: "center", padding: "2rem" }}>
-                <span className="spinner" style={{ width: 24, height: 24, margin: "0 auto 1rem" }} />
-                <p style={{ color: "var(--color-text-muted)", fontSize: "0.875rem" }}>Verifying cryptographic signature...</p>
+              <div style={{ textAlign: "center", padding: "2.5rem 1rem" }}>
+                <span className="spinner" style={{ width: 28, height: 28, margin: "0 auto 1rem" }} />
+                <p style={{ color: "var(--color-text-muted)", fontSize: "0.875rem" }}>
+                  Verifying cryptographic signature against immutable records...
+                </p>
               </div>
             )}
 
             {!loading && !hashParam && (
-              <div style={{ textAlign: "center", padding: "1.5rem" }}>
-                <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🔍</div>
+              <div style={{ textAlign: "center", padding: "1.5rem 1rem", borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: "1rem" }}>
+                <div style={{ fontSize: "2.25rem", marginBottom: "0.75rem" }}>🔍</div>
                 <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.125rem", fontWeight: 700, marginBottom: "0.5rem" }}>
-                  Scan QR Code to Verify
+                  Awaiting Verification Signature
                 </h3>
-                <p style={{ color: "var(--color-text-muted)", fontSize: "0.875rem", lineHeight: 1.6 }}>
-                  To verify the authenticity of a SEDS J&apos;pura certificate, please scan the validation QR code printed directly on the credential card.
+                <p style={{ color: "var(--color-text-muted)", fontSize: "0.8125rem", lineHeight: 1.6, maxWidth: "380px", margin: "0 auto" }}>
+                  Click <strong>&quot;Scan Certificate QR Code&quot;</strong> above to scan using your device&apos;s camera, or upload a photo of the printed certificate QR pattern.
                 </p>
               </div>
             )}
@@ -82,11 +114,11 @@ function VerificationForm() {
               <div style={{
                 padding: "1.5rem",
                 borderRadius: "var(--radius-lg)",
-                border: `1px solid ${result.valid ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)"}`,
+                border: `1px solid ${result.valid ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)"}`,
                 background: result.valid
-                  ? "linear-gradient(135deg, rgba(16,185,129,0.05), rgba(16,185,129,0.02))"
-                  : "linear-gradient(135deg, rgba(239,68,68,0.05), rgba(239,68,68,0.02))",
-                boxShadow: result.valid ? "0 4px 20px rgba(16,185,129,0.05)" : "none",
+                  ? "linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02))"
+                  : "linear-gradient(135deg, rgba(239,68,68,0.06), rgba(239,68,68,0.02))",
+                boxShadow: result.valid ? "0 4px 24px rgba(16,185,129,0.08)" : "none",
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: result.valid && result.data ? "1.5rem" : 0 }}>
                   <span style={{ fontSize: "2rem" }}>{result.valid ? "🏆" : "❌"}</span>
@@ -105,8 +137,8 @@ function VerificationForm() {
                 {result.valid && result.data && (
                   <div style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 140px",
-                    gap: "1.5rem",
+                    gridTemplateColumns: "1fr 130px",
+                    gap: "1.25rem",
                     alignItems: "center"
                   }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
@@ -142,28 +174,47 @@ function VerificationForm() {
                         alignItems: "center",
                         justifyContent: "center",
                         boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                        width: 130,
-                        height: 130,
+                        width: 120,
+                        height: 120,
                       }}>
                         <img
                           src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
-                            `${typeof window !== "undefined" ? window.location.origin : ""}/certificates/verify?hash=${result.data.hash}`
+                            getCertificateVerifyUrl(result.data.hash as string)
                           )}&color=030712&bgcolor=ffffff&qzone=0`}
                           alt="Verification QR Code"
                           style={{ width: "100%", height: "100%", objectFit: "contain" }}
                         />
                       </div>
                       <span style={{ fontSize: "0.625rem", color: "var(--color-text-muted)", textAlign: "center" }}>
-                        Secure Verification QR
+                        Official Signature QR
                       </span>
                     </div>
                   </div>
                 )}
+
+                {/* Scan another certificate */}
+                <div style={{ marginTop: "1.25rem", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "1rem", textAlign: "center" }}>
+                  <button
+                    type="button"
+                    onClick={() => setScannerOpen(true)}
+                    className="btn btn-ghost btn-sm"
+                    style={{ fontSize: "0.775rem" }}
+                  >
+                    🔄 Scan Another Certificate
+                  </button>
+                </div>
               </div>
             )}
           </div>
         </div>
       </section>
+
+      {/* QR Scanner Modal (Camera & Image Upload) */}
+      <QrScannerModal
+        isOpen={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onHashDetected={handleHashDetected}
+      />
     </div>
   );
 }

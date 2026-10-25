@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { issueCertificateAction, revokeCertificateAction, issueBulkCertificatesAction } from "@/lib/actions/admin";
+import { getCertificateVerifyUrl } from "@/lib/certificate-url";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -531,7 +532,7 @@ export default function CertificatesClient({
             }}>
               <img
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
-                  `${typeof window !== "undefined" ? window.location.origin : ""}/certificates/verify?hash=${selectedCertForQr.hash}`
+                  getCertificateVerifyUrl(selectedCertForQr.hash)
                 )}&color=030712&bgcolor=ffffff&qzone=1`}
                 alt="Verification QR Code"
                 style={{ width: "100%", height: "100%", objectFit: "contain" }}
@@ -571,7 +572,7 @@ export default function CertificatesClient({
             <div style={{ display: "flex", gap: "0.75rem" }}>
               <button
                 onClick={() => {
-                  const url = `${window.location.origin}/certificates/verify?hash=${selectedCertForQr.hash}`;
+                  const url = getCertificateVerifyUrl(selectedCertForQr.hash);
                   navigator.clipboard.writeText(url);
                   alert("Verification URL copied to clipboard!");
                 }}
@@ -583,8 +584,9 @@ export default function CertificatesClient({
               <button
                 onClick={async () => {
                   try {
+                    const verifyUrl = getCertificateVerifyUrl(selectedCertForQr.hash);
                     const url = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
-                      `${window.location.origin}/certificates/verify?hash=${selectedCertForQr.hash}`
+                      verifyUrl
                     )}&color=030712&bgcolor=ffffff&qzone=1`;
                     const res = await fetch(url);
                     const blob = await res.blob();
