@@ -93,17 +93,18 @@ export default async function ProjectsPage() {
                       inset: 0,
                       background: "linear-gradient(to top, rgba(5,13,26,0.85) 0%, transparent 55%)",
                     }} />
-                    {/* Badges over image */}
-                    <div style={{ position: "absolute", top: "0.75rem", left: "0.75rem", display: "flex", gap: "0.375rem" }}>
+                  </div>
+
+                  {/* Card Body */}
+                  <div style={{ padding: "1.25rem", flex: 1, display: "flex", flexDirection: "column" }}>
+                    {/* Status and Division Tags on top of project name */}
+                    <div style={{ display: "flex", gap: "0.375rem", marginBottom: "0.625rem", flexWrap: "wrap", alignItems: "center" }}>
                       <span className={`badge ${statusColors[project.status] || "badge-cosmic"}`} style={{ fontSize: "0.65rem" }}>
                         {project.status}
                       </span>
                       <span className="badge badge-laser" style={{ fontSize: "0.65rem" }}>{project.division.name}</span>
                     </div>
-                  </div>
 
-                  {/* Card Body */}
-                  <div style={{ padding: "1.25rem", flex: 1, display: "flex", flexDirection: "column" }}>
                     <h2 className="project-title">{project.title}</h2>
                     <p className="project-desc" style={{ flex: 1 }}>{project.description.slice(0, 120)}...</p>
                     {project.technologies.length > 0 && (
