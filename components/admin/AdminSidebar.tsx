@@ -40,6 +40,7 @@ const navGroups: NavGroup[] = [
       { href: "/admin/projects", label: "Projects", icon: "🔬", permission: ["CREATE_PROJECT", "EDIT_PROJECT", "DELETE_PROJECT", "ASSIGN_PROJECT_MEMBER", "VIEW_ALL_PROJECTS"] },
       { href: "/admin/news", label: "News", icon: "📰", permission: ["CREATE_NEWS", "EDIT_NEWS", "DELETE_NEWS", "PUBLISH_NEWS"] },
       { href: "/admin/events", label: "Events", icon: "📅", permission: ["CREATE_EVENT", "EDIT_EVENT", "DELETE_EVENT", "MANAGE_EVENTS"] },
+      { href: "/admin/events/verify", label: "Ticket Scanner", icon: "🎟️", permission: ["CREATE_EVENT", "EDIT_EVENT", "DELETE_EVENT", "MANAGE_EVENTS"] },
     ],
   },
   {

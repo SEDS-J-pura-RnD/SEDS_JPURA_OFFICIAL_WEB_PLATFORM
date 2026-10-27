@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌌 SEDS J'pura Official Web Platform
 
-## Getting Started
+> **Students for the Exploration and Development of Space (SEDS)**  
+> **University of Sri Jayewardenepura (USJ), Sri Lanka**  
+> *Official Web Platform — Space Research, Community, and Cryptographic Operations*
 
-First, run the development server:
+---
 
+## 📚 Documentation & Operation Manuals
+
+- 📘 **[Non-Technical Administrator Handbook](ADMIN_NON_TECHNICAL_GUIDE.md)**: A plain-English, step-by-step guide for executive committee members and chapter leaders to manage the team page, publish articles, create events, scan attendee tickets at doors, and issue QR-verifiable certificates.
+- 📙 **[Complete User & Administrator Manual](USER_MANUAL.md)**: Exhaustive technical manual detailing full system architecture, Next.js 16 App Router standards, Neon multi-schema data models, RBAC matrix, and CLI runbooks.
+- 🤖 **[Claude Code Developer Guide](CLAUDE.md)**: Conventions, commands, and skills for AI pair programmers and agentic development.
+
+---
+
+## ✨ Key System Features
+
+- **Public Space Portal (`/(public)`)**:
+  - Interactive research divisions showcase (Rocketry, Satellite Systems, Space Biology, Astronomy).
+  - Project milestone tracking, active investigator directories, and industry partners.
+  - Event registration engine with real-time capacity constraints and automated canvas ticket generation.
+  - Cryptographic credential verification portal with live webcam QR scanning.
+- **Member Cosmic Terminal (`/dashboard`)**:
+  - Academic bio, avatar uploads to Neon S3, research interests, awards, and portfolio social links.
+  - Executive committee terms and research project deployments.
+  - Personal credential hub with one-click high-resolution QR verification code downloads.
+- **Administrator Command Center (`/admin`)**:
+  - Granular Role-Based Access Control (RBAC) with 24 discrete permissions.
+  - Single and bulk Excel member onboarding with automatic scrypt password hashing.
+  - **Live Event Ticket Scanner & QR Verification (`/admin/events/verify`)**:
+    - Real-time webcam and mobile camera QR scanner.
+    - Sound effect synthesis for instant audio feedback on entrance doors.
+    - Duplicate check-in prevention with previous admission timestamps.
+    - Live attendance progress meter and session activity history.
+  - Certificate Authority issuing tamper-proof SHA-256 cryptographic signatures locked to canonical domains.
+  - Immutable security audit logs recording all state mutations.
+
+---
+
+## 🛠️ Technology Stack
+
+- **Framework**: Next.js 16.2.9 (App Router) + React 19.2.4 (Turbopack, Server Actions)
+- **Database**: Neon PostgreSQL Serverless (Multi-Schema: `neon_auth` and `public`)
+- **ORM**: Prisma 7.8.0 with `@prisma/adapter-neon`
+- **Auth**: Neon Auth / Better Auth (`@neondatabase/auth`)
+- **Storage**: Neon S3 Object Storage (`@aws-sdk/client-s3`)
+- **Styling**: Tailored Cosmic Design System (Vanilla CSS tokens, glassmorphism)
+- **Utilities**: SheetJS (`xlsx`) for Excel bulk processing, `jsqr` for QR decoding
+
+---
+
+## 🚀 Getting Started
+
+### 1. Prerequisites & Environment
+Ensure you have Node.js 20+ installed. Copy `.env.example` to `.env.local` and configure your database and authentication secrets:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Install Dependencies
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Generate Prisma Client
+```bash
+npx prisma generate
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 4. Run Development Server
+```bash
+npm run dev
+```
 
-## Learn More
+Open [http://localhost:3000](http://localhost:3000) with your browser.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🛡️ License & Institutional Ownership
+© 2026 Students for the Exploration and Development of Space, University of Sri Jayewardenepura (SEDS J'pura). All rights reserved.

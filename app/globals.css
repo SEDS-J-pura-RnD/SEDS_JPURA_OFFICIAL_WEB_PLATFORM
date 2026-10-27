@@ -2303,6 +2303,17 @@ h1, h2, h3, h4, h5, h6 {
   transform: translateX(4px);
 }
 
-
-
-
+@keyframes laserScan {
+  0% {
+    top: 5%;
+    opacity: 0.3;
+  }
+  50% {
+    top: 92%;
+    opacity: 1;
+  }
+  100% {
+    top: 5%;
+    opacity: 0.3;
+  }
+}

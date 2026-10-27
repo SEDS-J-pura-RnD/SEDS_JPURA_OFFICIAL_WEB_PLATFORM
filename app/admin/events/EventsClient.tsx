@@ -2,7 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { createEventAction, updateEventAction, deleteEventAction } from "@/lib/actions/admin";
+import { checkInAttendeeAction, undoCheckInAttendeeAction } from "@/lib/actions/events";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import ImageUpload from "@/components/admin/ImageUpload";
 
 interface EventRegistration {
@@ -10,6 +12,8 @@ interface EventRegistration {
   name: string;
   email: string;
   phone: string | null;
+  checkedIn?: boolean;
+  checkedInAt?: Date | null;
   createdAt: Date;
 }
 
@@ -145,13 +149,15 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
         "Attendee Email": reg.email,
         "Attendee Phone": reg.phone || "N/A",
         "Registration Date": new Date(reg.createdAt).toLocaleString("en-LK", { timeZone: "Asia/Colombo" }),
+        "Admission Status": reg.checkedIn ? "Checked In" : "Not Admitted",
+        "Admission Time": reg.checkedInAt ? new Date(reg.checkedInAt).toLocaleString("en-LK", { timeZone: "Asia/Colombo" }) : "N/A",
       }));
 
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Attendees");
       
-      const maxLens = [25, 25, 30, 15, 25];
+      const maxLens = [25, 25, 30, 15, 25, 18, 25];
       ws["!cols"] = maxLens.map(w => ({ wch: w }));
 
       const filename = `${selectedEventForRegs.title.replace(/[^a-z0-9]/gi, "_")}_Participation_List.xlsx`;
@@ -160,6 +166,39 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       alert("Failed to export registrations: " + errorMsg);
     }
+  }
+
+  async function handleToggleAttendeeCheckIn(regId: string, currentStatus: boolean) {
+    if (!selectedEventForRegs) return;
+    startTransition(async () => {
+      try {
+        if (currentStatus) {
+          await undoCheckInAttendeeAction(regId);
+        } else {
+          await checkInAttendeeAction(regId);
+        }
+        // Update local state in modal
+        setSelectedEventForRegs(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            registrations: prev.registrations.map(r => {
+              if (r.id === regId) {
+                return {
+                  ...r,
+                  checkedIn: !currentStatus,
+                  checkedInAt: !currentStatus ? new Date() : null,
+                };
+              }
+              return r;
+            }),
+          };
+        });
+        router.refresh();
+      } catch (e) {
+        console.error("Failed to toggle check-in:", e);
+      }
+    });
   }
 
   async function handleFormSubmit(e: React.FormEvent) {
@@ -237,9 +276,19 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
           <h1 className="page-title">📅 Events Center</h1>
           <p className="page-subtitle">Schedule telescope observations, rocketry launches, and conferences.</p>
         </div>
-        <button onClick={openCreateModal} className="btn btn-primary">
-          ➕ Create Event
-        </button>
+        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+          <Link
+            href="/admin/events/verify"
+            className="btn btn-secondary"
+            style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+          >
+            <span>🎟️</span>
+            <span>Ticket Scanner & QR</span>
+          </Link>
+          <button onClick={openCreateModal} className="btn btn-primary">
+            ➕ Create Event
+          </button>
+        </div>
       </div>
 
       {/* Filter Bar */}
@@ -448,26 +497,40 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
         <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
           <div onClick={() => setRegsModalOpen(false)} style={{ position: "absolute", inset: 0, background: "rgba(3, 7, 18, 0.8)", backdropFilter: "blur(4px)" }} />
           
-          <div className="card" style={{ width: "100%", maxWidth: "550px", position: "relative", zIndex: 1, maxHeight: "90vh", overflowY: "auto", boxShadow: "var(--glow-cosmic)" }}>
+          <div className="card" style={{ width: "100%", maxWidth: "620px", position: "relative", zIndex: 1, maxHeight: "90vh", overflowY: "auto", boxShadow: "var(--glow-cosmic)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-              <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.25rem", fontWeight: 800, margin: 0 }}>
-                👥 Event Attendees
-              </h2>
-              {selectedEventForRegs.registrations.length > 0 && (
-                <button
-                  onClick={handleExportRegistrations}
-                  className="btn btn-secondary btn-sm"
+              <div>
+                <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.25rem", fontWeight: 800, margin: 0 }}>
+                  👥 Event Attendees
+                </h2>
+                <div style={{ fontSize: "0.75rem", color: "var(--color-aurora)", fontWeight: 600, marginTop: "0.2rem" }}>
+                  Admission: {selectedEventForRegs.registrations.filter(r => r.checkedIn).length} / {selectedEventForRegs.registrations.length} Admitted
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                <Link
+                  href="/admin/events/verify"
+                  className="btn btn-primary btn-sm"
                   style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.4rem 0.8rem", fontSize: "0.75rem" }}
                 >
-                  📥 Export to Excel
-                </button>
-              )}
+                  📷 Scan Tickets
+                </Link>
+                {selectedEventForRegs.registrations.length > 0 && (
+                  <button
+                    onClick={handleExportRegistrations}
+                    className="btn btn-secondary btn-sm"
+                    style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.4rem 0.8rem", fontSize: "0.75rem" }}
+                  >
+                    📥 Export to Excel
+                  </button>
+                )}
+              </div>
             </div>
-            <p style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)", marginBottom: "1.5rem" }}>
+            <p style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)", marginBottom: "1.25rem" }}>
               Event: <span style={{ color: "var(--color-stellar)", fontWeight: 600 }}>{selectedEventForRegs.title}</span>
             </p>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "400px", overflowY: "auto" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "420px", overflowY: "auto" }}>
               {selectedEventForRegs.registrations.length === 0 ? (
                 <p style={{ fontSize: "0.875rem", color: "var(--color-text-dim)", textAlign: "center", paddingBlock: "2rem" }}>
                   No participants registered yet.
@@ -477,29 +540,77 @@ export default function EventsClient({ initialEvents }: EventsClientProps) {
                   <div
                     key={reg.id}
                     style={{
-                      padding: "0.75rem",
-                      background: "rgba(255,255,255,0.02)",
-                      border: "1px solid var(--color-border)",
+                      padding: "0.75rem 1rem",
+                      background: reg.checkedIn ? "rgba(16, 185, 129, 0.04)" : "rgba(255,255,255,0.02)",
+                      border: reg.checkedIn ? "1px solid rgba(16, 185, 129, 0.25)" : "1px solid var(--color-border)",
                       borderRadius: "var(--radius-md)",
                       display: "flex",
                       justifyContent: "space-between",
-                      alignItems: "center"
+                      alignItems: "center",
+                      gap: "0.75rem",
                     }}
                   >
                     <div>
-                      <div style={{ fontSize: "0.875rem", fontWeight: 600 }}>{reg.name}</div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--color-text-dim)" }}>{reg.email}</div>
-                      {reg.phone && <div style={{ fontSize: "0.7rem", color: "var(--color-text-muted)", marginTop: "0.25rem" }}>📞 {reg.phone}</div>}
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <span style={{ fontSize: "0.875rem", fontWeight: 600 }}>{reg.name}</span>
+                        {reg.checkedIn ? (
+                          <span
+                            style={{
+                              fontSize: "0.65rem",
+                              fontWeight: 700,
+                              padding: "0.15rem 0.45rem",
+                              borderRadius: "4px",
+                              background: "rgba(16, 185, 129, 0.15)",
+                              color: "#34d399",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            ✓ Admitted
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              fontSize: "0.65rem",
+                              padding: "0.15rem 0.45rem",
+                              borderRadius: "4px",
+                              background: "rgba(255, 255, 255, 0.05)",
+                              color: "var(--color-text-dim)",
+                            }}
+                          >
+                            Not Admitted
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--color-text-dim)", marginTop: "0.15rem" }}>
+                        {reg.email} {reg.phone && `· 📞 ${reg.phone}`}
+                      </div>
+                      <div style={{ fontSize: "0.7rem", color: "var(--color-text-dim)", marginTop: "0.2rem" }}>
+                        Registered: {new Date(reg.createdAt).toLocaleDateString("en-LK", { timeZone: "Asia/Colombo" })}
+                        {reg.checkedIn && reg.checkedInAt && (
+                          <span style={{ color: "#34d399", marginLeft: "0.5rem" }}>
+                            · Checked In: {new Date(reg.checkedInAt).toLocaleTimeString("en-LK", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div style={{ fontSize: "0.7rem", color: "var(--color-text-dim)" }}>
-                      Registered: {new Date(reg.createdAt).toLocaleDateString("en-LK", { timeZone: "Asia/Colombo" })}
+
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAttendeeCheckIn(reg.id, !!reg.checkedIn)}
+                        disabled={isPending}
+                        className={`btn btn-sm ${reg.checkedIn ? "btn-secondary" : "btn-primary"}`}
+                        style={{ fontSize: "0.75rem", padding: "0.35rem 0.75rem", minWidth: "90px" }}
+                      >
+                        {reg.checkedIn ? "↩️ Undo" : "🎟️ Check In"}
+                      </button>
                     </div>
                   </div>
                 ))
               )}
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "2rem" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1.5rem" }}>
               <button type="button" onClick={() => setRegsModalOpen(false)} className="btn btn-ghost">
                 Close Panel
               </button>
