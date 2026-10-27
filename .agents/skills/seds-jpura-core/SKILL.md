@@ -50,6 +50,7 @@ seds-jpura/
 │   │   ├── permissions/
 │   │   ├── projects/
 │   │   ├── roles/
+│   │   ├── site-settings/     # Home page live metric controls
 │   │   ├── sponsors/
 │   │   └── users/
 │   ├── api/                   # API routes (/api/media, /api/certificates, /api/auth, /api/upload)
@@ -69,6 +70,7 @@ seds-jpura/
 │   ├── db.ts                  # Prisma client with Neon adapter
 │   ├── permissions.ts         # 24 permissions and RBAC checking logic
 │   ├── s3.ts                  # Neon S3 upload & presigned URL engine
+│   ├── site-settings.ts       # Site configuration & home metric resolver
 │   ├── ticket-parser.ts       # QR and ticket payload parser
 │   └── validations.ts         # Zod schemas
 └── prisma/

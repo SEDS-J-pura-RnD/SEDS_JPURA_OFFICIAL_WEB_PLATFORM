@@ -449,3 +449,13 @@ model MemberProfile {
   @@map("member_profiles")
   @@schema("public")
 }
+
+model SiteSetting {
+  key         String   @id
+  value       String   @db.Text
+  description String?
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  @@map("site_settings")
+  @@schema("public")
+}

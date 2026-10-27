@@ -11,19 +11,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 
-async function getStats() {
-  try {
-    const [projects, events, news, members] = await Promise.all([
-      prisma.project.count(),
-      prisma.event.count({ where: { isPublished: true } }),
-      prisma.news.count({ where: { isPublished: true } }),
-      prisma.user.count(),
-    ]);
-    return { projects, events, news, members };
-  } catch {
-    return { projects: 12, events: 45, news: 30, members: 150 };
-  }
-}
+import { getResolvedHomePageStats } from "@/lib/site-settings";
 
 async function getRecentNews() {
   try {
@@ -77,8 +65,8 @@ const divisions = [
 ];
 
 export default async function HomePage() {
-  const [stats, recentNews] = await Promise.all([
-    getStats(),
+  const [statsData, recentNews] = await Promise.all([
+    getResolvedHomePageStats(),
     getRecentNews(),
   ]);
 
@@ -133,13 +121,8 @@ export default async function HomePage() {
       <section className="section" style={{ paddingTop: "3rem" }}>
         <div className="container">
           <div className="stats-grid">
-            {[
-              { number: `${stats.members}+`, label: "Active Members" },
-              { number: `${stats.projects}+`, label: "Projects Launched" },
-              { number: "5", label: "Research Divisions" },
-              { number: `${stats.events}+`, label: "Events Hosted" },
-            ].map((stat) => (
-              <div key={stat.label} className="stat-card animate-slide-up">
+            {statsData.displayStats.map((stat) => (
+              <div key={stat.key} className="stat-card animate-slide-up">
                 <div className="stat-number">{stat.number}</div>
                 <div className="stat-label">{stat.label}</div>
               </div>

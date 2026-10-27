@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getUserPermissions } from "@/lib/permissions";
+import { getResolvedHomePageStats } from "@/lib/site-settings";
 
 export const metadata: Metadata = { title: "Admin Dashboard" };
 
@@ -30,7 +31,10 @@ export default async function AdminDashboardPage() {
   if (!session) redirect("/auth/login?callbackUrl=/admin");
 
   const permissions = await getUserPermissions(session.user.id);
-  const stats = await getStats();
+  const [stats, homeStats] = await Promise.all([
+    getStats(),
+    getResolvedHomePageStats(),
+  ]);
 
   const hasPermission = (required: string | string[]) => {
     if (typeof required === "string") {
@@ -49,6 +53,7 @@ export default async function AdminDashboardPage() {
   ].filter(card => !card.permission || hasPermission(card.permission));
 
   const quickActions = [
+    { href: "/admin/site-settings", label: "Home Page Stats", icon: "📊" },
     { href: "/admin/users", label: "Add User", icon: "👤", permission: "CREATE_USER" },
     { href: "/admin/projects", label: "New Project", icon: "🚀", permission: "CREATE_PROJECT" },
     { href: "/admin/news", label: "Write News", icon: "✍️", permission: "CREATE_NEWS" },
@@ -78,6 +83,101 @@ export default async function AdminDashboardPage() {
             <div className="admin-stat-label">{card.label}</div>
           </Link>
         ))}
+      </div>
+
+      {/* Home Page Public Metrics Quick Overview */}
+      <div
+        className="card"
+        style={{
+          marginTop: "1.75rem",
+          background: "linear-gradient(135deg, rgba(99,102,241,0.08), rgba(56,189,248,0.03))",
+          borderColor: "rgba(99,102,241,0.2)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ fontSize: "1.1rem" }}>📊</span>
+              <h2
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontSize: "0.875rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  color: "var(--color-text-muted)",
+                }}
+              >
+                HOME PAGE PUBLIC METRICS
+              </h2>
+            </div>
+            <p style={{ fontSize: "0.75rem", color: "var(--color-text-dim)", marginTop: "0.2rem" }}>
+              Live stats currently visible to visitors on the landing page (Active Members, Projects, Divisions, Events)
+            </p>
+          </div>
+          <Link
+            href="/admin/site-settings"
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: "0.75rem" }}
+          >
+            <span>⚙️</span> Manage Metrics →
+          </Link>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: "0.75rem",
+          }}
+        >
+          {homeStats.displayStats.map((item) => (
+            <div
+              key={item.key}
+              style={{
+                padding: "0.875rem 1rem",
+                borderRadius: "var(--radius-md)",
+                background: "rgba(0,0,0,0.3)",
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "0.7rem",
+                  color: "var(--color-text-dim)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span>{item.label}</span>
+                <span
+                  style={{
+                    color: item.mode === "auto" ? "#10b981" : "#f59e0b",
+                    fontSize: "0.625rem",
+                    fontWeight: 700,
+                    padding: "0.1rem 0.4rem",
+                    borderRadius: "9999px",
+                    background: item.mode === "auto" ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.12)",
+                    border: `1px solid ${item.mode === "auto" ? "rgba(16,185,129,0.25)" : "rgba(245,158,11,0.25)"}`,
+                  }}
+                >
+                  {item.mode === "auto" ? "LIVE AUTO" : "CUSTOM"}
+                </span>
+              </div>
+              <div
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontSize: "1.4rem",
+                  fontWeight: 800,
+                  color: "var(--color-cosmic)",
+                  marginTop: "0.35rem",
+                }}
+              >
+                {item.number}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: hasPermission("VIEW_LOGS") ? "1fr 1fr" : "1fr", gap: "1.5rem", marginTop: "2rem" }}>

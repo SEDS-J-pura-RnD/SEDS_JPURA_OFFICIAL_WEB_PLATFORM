@@ -42,6 +42,7 @@
    - [Events, Capacity Control & QR Ticket Verification](#events--attendee-capacity-control)
    - [Certificate Authority & Bulk Issuance](#certificate-authority--bulk-issuance)
    - [Sponsors & Collaborators Directory](#sponsors--collaborators-directory)
+   - [Site Settings & Home Page Metrics](#site-settings--home-page-metrics-administration)
    - [Inquiries Inbox](#inquiries-inbox)
    - [Audit Logs & Compliance Trail](#audit-logs--compliance-trail)
 5. [Developer & CLI Operations Runbook](#5-developer--cli-operations-runbook)
@@ -420,6 +421,22 @@ https://jpura.sedssl.org/certificates/verify?hash=<64-char-hash>
   - Lists messages submitted through the public `/contact` form.
   - Features quick "Mark as Read / Unread" toggling.
   - Displays client IP address and submission timestamp for security auditing.
+
+---
+
+### Site Settings & Home Page Metrics Administration
+- **Route**: `/admin/site-settings`
+- **Required Permission**: `VIEW_ADMIN_DASHBOARD`
+- **Features**:
+  - **Live Landing Page Preview**: Real-time simulation of the public statistics grid rendered directly below the hero section on `/`.
+  - **Individual Metric Control**:
+    - **Active Members**: Select `⚡ Auto` (live user accounts) or `✍️ Custom Override` (e.g., `150+`).
+    - **Projects Launched**: Select `⚡ Auto` (live database projects) or `✍️ Custom Override` (e.g., `12+`).
+    - **Research Divisions**: Select `⚡ Auto` (live database divisions) or `✍️ Custom Override` (e.g., `5`).
+    - **Events Hosted**: Select `⚡ Auto` (live published events) or `✍️ Custom Override` (e.g., `45+`).
+  - **Display Suffix & Labels**: Customize symbol suffixes (e.g. `+`) and official card titles.
+  - **Data Persistence & Audit Log**: Values are safely stored in `public.site_settings` under key `home_stats` and trigger `SITE_SETTINGS_UPDATED` compliance events.
+  - **Command Center Quick Banner**: Current numbers and modes are prominently displayed on `/admin` with direct 1-click management access.
 
 ---
 

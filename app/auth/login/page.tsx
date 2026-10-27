@@ -1,9 +1,34 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "@/lib/auth-client";
+
+function SignedOutNotice() {
+  const searchParams = useSearchParams();
+  if (searchParams.get("signedOut") !== "true") return null;
+
+  return (
+    <div
+      style={{
+        padding: "0.75rem 1rem",
+        background: "rgba(16,185,129,0.12)",
+        border: "1px solid rgba(16,185,129,0.3)",
+        borderRadius: "var(--radius-md)",
+        color: "#10b981",
+        fontSize: "0.875rem",
+        marginBottom: "0.5rem",
+        display: "flex",
+        alignItems: "center",
+        gap: "0.5rem",
+      }}
+    >
+      <span>🔒</span>
+      <span>You have been securely signed out.</span>
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -62,6 +87,10 @@ export default function LoginPage() {
 
         <h1 className="auth-title">Welcome Back</h1>
         <p className="auth-subtitle">Sign in to your SEDS member account</p>
+
+        <Suspense fallback={null}>
+          <SignedOutNotice />
+        </Suspense>
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           <div className="form-group">

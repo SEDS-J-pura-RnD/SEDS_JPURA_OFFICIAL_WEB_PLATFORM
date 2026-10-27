@@ -27,7 +27,8 @@ This handbook covers all daily tasks: publishing news, creating events, adding t
 6. [Managing Projects & Research Divisions](#6-managing-projects--research-divisions)
 7. [Adding Sponsors & Partner Organizations](#7-adding-sponsors--partner-organizations)
 8. [Reading Inquiries from the Contact Page](#8-reading-inquiries-from-the-contact-page)
-9. [Common "Why isn't it working?" Questions & Quick Fixes](#9-troubleshooting--quick-fixes)
+9. [Controlling Home Page Metrics ("Active Members", "Projects Launched", etc.)](#9-controlling-home-page-metrics)
+10. [Common "Why isn't it working?" Questions & Quick Fixes](#10-troubleshooting--quick-fixes)
 
 ---
 
@@ -48,6 +49,7 @@ This handbook covers all daily tasks: publishing news, creating events, adding t
    - **📅 Events**: Workshops, stargazing nights, and webinars.
    - **🎟️ Ticket Scanner**: Live camera QR scanner for admitting attendees at events.
    - **🏆 Certificates**: Issue verifiable digital certificates.
+   - **📊 Home Page Stats**: Change the 4 numbers displayed publicly on the landing page.
    - **🤝 Sponsors**: Partner companies and institutions.
    - **✉️ Inquiries**: Messages sent from the website contact form.
 
@@ -251,7 +253,28 @@ When visitors submit messages through the public `/contact` page:
 
 ---
 
-## 9. Troubleshooting & Quick Fixes
+## 9. Controlling Home Page Metrics
+
+When visitors land on the SEDS J'pura Home Page (`/`), four highlighted statistics appear directly below the main space animation:
+1. **Active Members** (e.g. `150+`)
+2. **Projects Launched** (e.g. `12+`)
+3. **Research Divisions** (e.g. `5`)
+4. **Events Hosted** (e.g. `45+`)
+
+You have full control over whether each number automatically counts from the database or displays a custom milestone number.
+
+### How to Change the Home Page Numbers:
+1. In the Admin Sidebar, click **"📊 Home Page Stats"** (or click **"⚙️ Manage Metrics →"** on the Command Center overview).
+2. You will see a **Live Home Page Banner Preview** showing exactly what visitors currently see.
+3. For each of the 4 metrics, you can choose between two modes:
+   - **⚡ Auto (Live Count)**: The website calculates the exact number of active accounts, published events, projects, or divisions currently stored in the database.
+   - **✍️ Custom Override**: Allows you to enter any number you choose (e.g., if you have 150 official chapter members but they haven't all registered web accounts yet).
+4. You can also customize the **Display Suffix** (e.g., `+`, or leave it blank) and the **Card Title / Label**.
+5. When finished, click **"💾 Save Changes"** at the top or bottom of the screen. The changes will update immediately on the public website!
+
+---
+
+## 10. Troubleshooting & Quick Fixes
 
 ### ❓ "Why is an Executive Committee member not appearing on the `/team` page?"
 Check these three things in order:

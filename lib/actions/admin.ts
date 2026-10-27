@@ -7,6 +7,7 @@ import { isAdmin, hasPermission, PERMISSIONS, Permission } from "../permissions"
 import { logAudit, getClientIP, AuditAction } from "../audit";
 import { revalidatePath } from "next/cache";
 import crypto from "crypto";
+import { HomePageStatsSettings, HOME_STATS_SETTING_KEY, parseHomePageStats, getResolvedHomePageStats } from "../site-settings";
 
 // ─────────────────────────────────────────────
 // AUTH & CLEARANCE CHECK UTILITY
@@ -1448,5 +1449,49 @@ export async function issueBulkCertificatesAction(certs: {
   }
 
   return { success: true, createdCount, skippedCount, errors, results };
+}
+
+// ─────────────────────────────────────────────
+// SITE SETTINGS / HOME PAGE STATS ACTIONS
+// ─────────────────────────────────────────────
+
+export async function getHomePageStatsAction() {
+  await checkPermissionClearance(PERMISSIONS.VIEW_ADMIN_DASHBOARD);
+  const data = await getResolvedHomePageStats();
+  return { success: true, ...data };
+}
+
+export async function updateHomePageStatsAction(settings: HomePageStatsSettings) {
+  const session = await checkPermissionClearance(PERMISSIONS.VIEW_ADMIN_DASHBOARD);
+  const ip = await getClientIP();
+
+  const sanitized = parseHomePageStats(JSON.stringify(settings));
+
+  const updatedSetting = await prisma.siteSetting.upsert({
+    where: { key: HOME_STATS_SETTING_KEY },
+    create: {
+      key: HOME_STATS_SETTING_KEY,
+      value: JSON.stringify(sanitized),
+      description: "Home page highlighted metrics configuration",
+    },
+    update: {
+      value: JSON.stringify(sanitized),
+    },
+  });
+
+  await logAudit({
+    userId: session.user.id,
+    action: "SITE_SETTINGS_UPDATED",
+    entity: "SiteSetting",
+    entityId: HOME_STATS_SETTING_KEY,
+    newState: sanitized,
+    ipAddress: ip,
+  });
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  revalidatePath("/admin/site-settings");
+
+  return { success: true, settings: sanitized, updatedAt: updatedSetting.updatedAt };
 }
 

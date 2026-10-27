@@ -125,7 +125,13 @@ export default function Navbar() {
                     Dashboard
                   </Link>
                   <button
-                    onClick={() => signOut()}
+                    onClick={async () => {
+                      try {
+                        await signOut();
+                      } finally {
+                        window.location.replace("/auth/login?signedOut=true");
+                      }
+                    }}
                     className="btn btn-secondary btn-sm"
                   >
                     Sign Out
@@ -258,7 +264,19 @@ export default function Navbar() {
               {session && (
                 <div className="mobile-auth">
                   <Link href="/dashboard" className="btn btn-ghost w-full" onClick={() => setMobileOpen(false)}>Dashboard</Link>
-                  <button onClick={() => { signOut(); setMobileOpen(false); }} className="btn btn-secondary w-full">Sign Out</button>
+                  <button
+                    onClick={async () => {
+                      setMobileOpen(false);
+                      try {
+                        await signOut();
+                      } finally {
+                        window.location.replace("/auth/login?signedOut=true");
+                      }
+                    }}
+                    className="btn btn-secondary w-full"
+                  >
+                    Sign Out
+                  </button>
                 </div>
               )}
             </div>
